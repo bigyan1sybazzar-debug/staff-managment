@@ -603,29 +603,31 @@
         if (!confirmBtn.classList.contains('d-none')) { confirmBtn.disabled=true; confirmBtn.textContent='Submitting...'; }
 
         fetch(url, {method:'POST', body:fd}).then(function(res){
-            var ct=res.headers.get('content-type')||'';
-            if (ct.indexOf('application/json')!==-1) {
-                return res.json().then(function(data){
-                    if (data.ok) {
-                        closeModal();
-                        swapToCheckOut(_jobPk, data.record_pk);
-                    } else {
-                        var cpBtn=document.getElementById('capturePicBtn');
-                        cpBtn.disabled=false; cpBtn.innerHTML='<i class="bi bi-camera-fill me-2"></i>Retry';
-                        document.getElementById('retakePicBtn').style.display='';
-                        confirmBtn.disabled=false; confirmBtn.textContent=_mode==='in'?'Confirm Check In':'Confirm Check Out';
-                        alert('Failed: '+(data.error||'Unknown error'));
-                    }
-                });
-            } else {
+            // Always try to parse JSON first (both success and error responses return JSON)
+            return res.json().then(function(data){
+                if (data.ok) {
+                    closeModal();
+                    swapToCheckOut(_jobPk, data.record_pk);
+                } else {
+                    // Show the server error message
+                    alert('Check-in failed: '+(data.error||'Unknown error'));
+                    var cpBtn=document.getElementById('capturePicBtn');
+                    if (cpBtn) { cpBtn.disabled=false; cpBtn.innerHTML='<i class="bi bi-camera-fill me-2"></i><span id="captureLabel">Take Selfie & Check In</span>'; }
+                    document.getElementById('retakePicBtn').style.display='';
+                    if (!confirmBtn.classList.contains('d-none')) { confirmBtn.disabled=false; confirmBtn.textContent=_mode==='in'?'Confirm Check In':'Confirm Check Out'; }
+                }
+            }).catch(function(){
+                // Non-JSON response (e.g. Django login redirect) — reload page
                 window.location.href='/my-dashboard/';
-            }
+            });
         }).catch(function(e){
-            document.getElementById('capturePicBtn').disabled=false;
-            document.getElementById('retakePicBtn').style.display='';
-            alert(e.message);
+            var cpBtn=document.getElementById('capturePicBtn');
+            if (cpBtn) { cpBtn.disabled=false; }
+            if (!confirmBtn.classList.contains('d-none')) { confirmBtn.disabled=false; }
+            alert('Network error: '+e.message);
         });
     }
+
 
     function swapToCheckOut(jobPk, recordPk) {
         var zone=document.getElementById('zone-'+jobPk);

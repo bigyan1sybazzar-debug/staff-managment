@@ -132,32 +132,37 @@ def staff_dashboard_view(request):
 # ==========================
 @login_required
 def checkin_view(request, job_pk):
-    job = get_object_or_404(Job, pk=job_pk, assigned_staff=request.user)
-    if request.method == 'POST':
-        try:
-            lat      = float(request.POST.get('lat', 0))
-            lng      = float(request.POST.get('lng', 0))
-            accuracy = float(request.POST.get('accuracy', 0))
-            selfie   = request.FILES.get('selfie')
+    if request.method != 'POST':
+        return redirect('staff_dashboard')
+    try:
+        job = Job.objects.get(pk=job_pk)
+    except Job.DoesNotExist:
+        return JsonResponse({'ok': False, 'error': f'Job #{job_pk} not found'}, status=404)
+    try:
+        lat      = float(request.POST.get('lat', 0))
+        lng      = float(request.POST.get('lng', 0))
+        accuracy = float(request.POST.get('accuracy', 0))
+        selfie   = request.FILES.get('selfie')
 
-            distance  = haversine_distance(job.lat, job.lng, lat, lng)
-            is_inside = distance <= job.geofence_radius
+        distance  = haversine_distance(job.lat, job.lng, lat, lng)
+        is_inside = distance <= job.geofence_radius
 
-            record = CheckInRecord.objects.create(
-                job=job,
-                user=request.user,
-                check_in_lat=lat,
-                check_in_lng=lng,
-                accuracy=accuracy,
-                distance_from_center=round(distance, 1),
-                is_inside_geofence=is_inside,
-                selfie=selfie,
-                status='PENDING_APPROVAL',
-            )
-            return JsonResponse({'ok': True, 'record_pk': record.id, 'job_pk': job.pk})
-        except Exception as e:
-            return JsonResponse({'ok': False, 'error': str(e)}, status=400)
-    return redirect('staff_dashboard')
+        record = CheckInRecord.objects.create(
+            job=job,
+            user=request.user,
+            check_in_lat=lat,
+            check_in_lng=lng,
+            accuracy=accuracy,
+            distance_from_center=round(distance, 1),
+            is_inside_geofence=is_inside,
+            selfie=selfie,
+            status='PENDING_APPROVAL',
+        )
+        return JsonResponse({'ok': True, 'record_pk': record.id, 'job_pk': job.pk})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'error': str(e)}, status=400)
+
+
 
 
 
