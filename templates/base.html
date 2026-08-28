@@ -278,12 +278,46 @@
             color: #64748b;
             font-size: 0.9rem;
         }
+
+        /* Responsive Sidebar Drawer */
+        @media (max-width: 991.98px) {
+            .sidebar {
+                transform: translateX(-100%);
+                z-index: 1050;
+                box-shadow: 0 0 25px rgba(0,0,0,0.15);
+            }
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            .main-wrapper {
+                margin-left: 0 !important;
+            }
+            .top-navbar {
+                padding: 0.75rem 1rem;
+            }
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.4);
+                z-index: 1040;
+            }
+            .sidebar-overlay.show {
+                display: block;
+            }
+            .navbar-search {
+                max-width: 220px;
+            }
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
 
     {% if user.is_authenticated %}
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
     <!-- Sidebar -->
     <div class="sidebar">
         <div class="sidebar-brand">
@@ -352,9 +386,14 @@
         {% if user.is_authenticated %}
         <!-- Top Navbar -->
         <div class="top-navbar">
-            <div class="navbar-search">
-                <i class="bi bi-search"></i>
-                <input type="text" placeholder="Search staff, sites, tasks...">
+            <div class="d-flex align-items-center flex-grow-1">
+                <button class="btn btn-light border-0 d-lg-none me-2" id="sidebarToggle" type="button">
+                    <i class="bi bi-list fs-4"></i>
+                </button>
+                <div class="navbar-search">
+                    <i class="bi bi-search"></i>
+                    <input type="text" placeholder="Search staff, sites, tasks...">
+                </div>
             </div>
             
             <div class="navbar-actions">
@@ -395,5 +434,22 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     
     {% block extra_js %}{% endblock %}
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var toggleBtn = document.getElementById('sidebarToggle');
+            var sidebar = document.querySelector('.sidebar');
+            var overlay = document.getElementById('sidebarOverlay');
+            
+            if (toggleBtn && sidebar && overlay) {
+                function toggleSidebar() {
+                    sidebar.classList.toggle('show');
+                    overlay.classList.toggle('show');
+                }
+                toggleBtn.addEventListener('click', toggleSidebar);
+                overlay.addEventListener('click', toggleSidebar);
+            }
+        });
+    </script>
 </body>
 </html>
