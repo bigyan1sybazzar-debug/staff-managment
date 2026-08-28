@@ -18,7 +18,11 @@ urlpatterns = [
     path("jobs/<int:pk>/delete/", views.job_delete_view, name="job_delete"),
     path("history/", views.history_view, name="history"),
     path("map/", views.map_view, name="map_view"),
-    
+
+    # Check-In / Check-Out
+    path("checkin/<int:job_pk>/", views.checkin_view, name="checkin"),
+    path("checkout/<int:record_pk>/", views.checkout_view, name="checkout"),
+
     # API endpoints
     path("api/staff-locations/", views.staff_locations_api, name="staff_locations_api"),
     path("api/log-location/", views.log_location_api, name="log_location_api"),
