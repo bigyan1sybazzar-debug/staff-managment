@@ -490,37 +490,37 @@
         var dist=haversine(gpsLat,gpsLng,_jlat,_jlng), inside=dist<=_jRadius;
         var dispDist=dist>=1000?(dist/1000).toFixed(2)+' km':Math.round(dist)+'m';
 
+        // Update GPS readout
         document.getElementById('modalGpsBox').className='gps-status-box '+(inside?'good':'outside');
         document.getElementById('modalGpsBox').innerHTML=
             '<i class="bi bi-geo-alt-fill" style="font-size:20px;color:'+(inside?'#10b981':'#ef4444')+'"></i>'
             +'<div><div style="font-size:13px;font-weight:700;">'+gpsLat.toFixed(5)+', '+gpsLng.toFixed(5)+'</div>'
-            +'<div style="font-size:11px;color:#6b7280;">Accuracy: \u00b1'+Math.round(gpsAcc)+'m</div></div>';
+            +'<div style="font-size:11px;color:#6b7280;">\u00b1'+Math.round(gpsAcc)+'m accuracy &mdash; '+Math.round(dist)+'m from site</div></div>';
 
         var geoBox=document.getElementById('modalGeofenceBox');
         geoBox.classList.remove('d-none');
+
         if (inside) {
             geoBox.className='geofence-box inside';
             document.getElementById('modalGeoIcon').textContent='\u2705';
-            document.getElementById('modalGeoMsg').innerHTML='<span style="color:#059669;">Inside Geofence \u2014 Camera Unlocked</span>';
+            document.getElementById('modalGeoMsg').innerHTML='<span style="color:#059669;">Inside Geofence &mdash; Ready to Check In</span>';
             document.getElementById('modalGeoDist').textContent=Math.round(dist)+'m from site (limit: '+_jRadius+'m)';
             document.getElementById('modalLockedSection').classList.add('d-none');
 
-            if (_requireSelfie) {
-                // Selfie required: open camera immediately
-                document.getElementById('modalCameraSection').classList.remove('d-none');
-                startCam();
-            } else {
-                // No selfie needed: show confirm button directly
-                document.getElementById('modalConfirmBtn').classList.remove('d-none');
-            }
+            // Always open camera immediately when inside geofence
+            document.getElementById('modalCameraSection').classList.remove('d-none');
+            startCam();
+
         } else {
             geoBox.className='geofence-box outside';
             document.getElementById('modalGeoIcon').textContent='\uD83D\uDD12';
-            document.getElementById('modalGeoMsg').innerHTML='<span style="color:#dc2626;">Outside Geofence \u2014 Camera Locked</span>';
+            document.getElementById('modalGeoMsg').innerHTML='<span style="color:#dc2626;">Outside Geofence &mdash; Move Closer</span>';
             document.getElementById('modalGeoDist').textContent=dispDist+' from site (must be within '+_jRadius+'m)';
             document.getElementById('modalLockedSection').classList.remove('d-none');
+            document.getElementById('modalCameraSection').classList.add('d-none');
         }
     }
+
 
     function closeModal() { document.getElementById('checkOverlay').classList.remove('open'); stopCam(); }
     function closeModalIfOutside(e) { if(e.target===document.getElementById('checkOverlay')) closeModal(); }
