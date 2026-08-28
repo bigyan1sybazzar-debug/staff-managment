@@ -60,18 +60,20 @@
         </div>
     </div>
     <div class="col-sm-6 col-xl-3">
-        <div class="card card-hover h-100 p-3">
-            <div class="d-flex align-items-center justify-content-between">
-                <div>
-                    <span class="text-muted small fw-semibold">Pending Approvals</span>
-                    <h3 class="fw-bold my-1 text-warning">{{ pending_approvals_count }}</h3>
-                    <span class="text-warning small"><i class="bi bi-shield-fill-exclamation me-1"></i>Awaiting Review</span>
-                </div>
-                <div class="bg-warning-light p-3 rounded-4 text-warning">
-                    <i class="bi bi-hourglass-split fs-3"></i>
+        <a href="{% url 'history' %}?status=PENDING_APPROVAL" class="text-decoration-none text-dark">
+            <div class="card card-hover h-100 p-3 border border-warning-subtle">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="text-muted small fw-semibold">Pending Approvals</span>
+                        <h3 class="fw-bold my-1 text-warning">{{ pending_approvals_count }}</h3>
+                        <span class="text-warning small"><i class="bi bi-shield-fill-exclamation me-1"></i>Awaiting Review</span>
+                    </div>
+                    <div class="bg-warning-light p-3 rounded-4 text-warning">
+                        <i class="bi bi-hourglass-split fs-3"></i>
+                    </div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
 </div>
 
