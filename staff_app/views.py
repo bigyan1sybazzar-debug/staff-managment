@@ -8,7 +8,19 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q
 import json
+import math
 from .models import Profile, Job, CheckInRecord, SystemSettings
+
+
+def haversine_distance(lat1, lng1, lat2, lng2):
+    """Return distance in metres between two GPS points."""
+    R = 6371000
+    d_lat = math.radians(lat2 - lat1)
+    d_lng = math.radians(lng2 - lng1)
+    a = (math.sin(d_lat / 2) ** 2
+         + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2))
+         * math.sin(d_lng / 2) ** 2)
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 # ==========================
 # Authentication Views
@@ -90,18 +102,105 @@ def staff_dashboard_view(request):
     today = timezone.now().date()
     user  = request.user
 
-    # All jobs assigned to this user
-    all_assigned   = Job.objects.filter(assigned_staff=user)
-    today_jobs     = all_assigned.filter(date=today).order_by('start_time')
-    upcoming_jobs  = all_assigned.filter(date__gt=today).order_by('date', 'start_time')
+    all_assigned  = Job.objects.filter(assigned_staff=user)
+    today_jobs    = all_assigned.filter(date=today).order_by('start_time')
+    upcoming_jobs = all_assigned.filter(date__gt=today).order_by('date', 'start_time')
+
+    # Map job_id -> active CheckInRecord (checked-in but not yet checked-out)
+    active_checkins = {}
+    for ci in CheckInRecord.objects.filter(user=user, check_out_timestamp__isnull=True):
+        active_checkins[ci.job_id] = ci
+
+    # Attach active check-in info to each job
+    def annotate(queryset):
+        jobs = list(queryset)
+        for job in jobs:
+            job.active_checkin = active_checkins.get(job.pk)
+        return jobs
 
     context = {
         'today':          today,
-        'today_jobs':     today_jobs,
-        'upcoming_jobs':  upcoming_jobs,
+        'today_jobs':     annotate(today_jobs),
+        'upcoming_jobs':  annotate(upcoming_jobs),
         'total_assigned': all_assigned.count(),
     }
     return render(request, 'staff_dashboard.html', context)
+
+
+# ==========================
+# Check-In View
+# ==========================
+@login_required
+def checkin_view(request, job_pk):
+    job = get_object_or_404(Job, pk=job_pk, assigned_staff=request.user)
+    if request.method == 'POST':
+        try:
+            print("--- CHECK-IN POST ---")
+            print("POST data:", request.POST)
+            print("FILES data:", request.FILES)
+            
+            lat      = float(request.POST.get('lat', 0))
+            lng      = float(request.POST.get('lng', 0))
+            accuracy = float(request.POST.get('accuracy', 0))
+            selfie   = request.FILES.get('selfie')
+
+            distance   = haversine_distance(job.lat, job.lng, lat, lng)
+            is_inside  = distance <= job.geofence_radius
+
+            record = CheckInRecord.objects.create(
+                job=job,
+                user=request.user,
+                check_in_lat=lat,
+                check_in_lng=lng,
+                accuracy=accuracy,
+                distance_from_center=round(distance, 1),
+                is_inside_geofence=is_inside,
+                selfie=selfie,
+                status='PENDING_APPROVAL',
+            )
+            print("Created check-in record ID:", record.id, "Selfie:", record.selfie)
+            messages.success(request, f"Checked in to '{job.title}' successfully!")
+        except Exception as e:
+            print("Check-in error:", str(e))
+            messages.error(request, f"Check-in failed: {e}")
+    return redirect('staff_dashboard')
+
+
+# ==========================
+# Check-Out View
+# ==========================
+@login_required
+def checkout_view(request, record_pk):
+    record = get_object_or_404(CheckInRecord, pk=record_pk, user=request.user)
+    if request.method == 'POST':
+        try:
+            print("--- CHECK-OUT POST ---")
+            print("POST data:", request.POST)
+            print("FILES data:", request.FILES)
+
+            lat      = float(request.POST.get('lat', 0))
+            lng      = float(request.POST.get('lng', 0))
+            accuracy = float(request.POST.get('accuracy', 0))
+            selfie   = request.FILES.get('selfie')
+
+            now      = timezone.now()
+            duration = int((now - record.timestamp).total_seconds() / 60)
+
+            record.check_out_timestamp = now
+            record.check_out_lat       = lat
+            record.check_out_lng       = lng
+            record.check_out_accuracy  = accuracy
+            record.duration_minutes    = duration
+            if selfie:
+                record.check_out_selfie = selfie
+            record.status = 'COMPLETED'
+            record.save()
+            print("Updated check-out record ID:", record.id, "Checkout selfie:", record.check_out_selfie)
+            messages.success(request, f"Checked out from '{record.job.title}'! Duration: {duration} min.")
+        except Exception as e:
+            print("Check-out error:", str(e))
+            messages.error(request, f"Check-out failed: {e}")
+    return redirect('staff_dashboard')
 
 
 # ==========================
