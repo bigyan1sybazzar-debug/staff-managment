@@ -141,7 +141,7 @@
 
 <!-- Check-In Details & Review Modal -->
 <div class="modal fade" id="reviewModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content rounded-4 border-0 shadow-lg">
             <div class="modal-header border-bottom-0 pb-0">
                 <h5 class="modal-title fw-bold" id="modalTitle">Review Check-In Activity</h5>
@@ -263,6 +263,8 @@
     .bg-success-subtle { background-color: rgba(25, 135, 84, 0.1) !important; }
     .bg-danger-subtle { background-color: rgba(220, 53, 69, 0.1) !important; }
     .text-indigo { color: #6366f1; }
+    #reviewModal { z-index: 1060 !important; }
+    .modal-backdrop { z-index: 1055 !important; }
 </style>
 {% endblock %}
 
@@ -273,7 +275,9 @@
     var geofenceCircle = null;
 
     function viewLogDetails(id) {
-        var modal = new bootstrap.Modal(document.getElementById('reviewModal'));
+        var el = document.getElementById('reviewModal');
+        if (el.parentNode !== document.body) document.body.appendChild(el);
+        var modal = new bootstrap.Modal(el);
         modal.show();
         
         document.getElementById('modalLoading').classList.remove('d-none');

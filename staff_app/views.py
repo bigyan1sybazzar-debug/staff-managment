@@ -135,17 +135,13 @@ def checkin_view(request, job_pk):
     job = get_object_or_404(Job, pk=job_pk, assigned_staff=request.user)
     if request.method == 'POST':
         try:
-            print("--- CHECK-IN POST ---")
-            print("POST data:", request.POST)
-            print("FILES data:", request.FILES)
-            
             lat      = float(request.POST.get('lat', 0))
             lng      = float(request.POST.get('lng', 0))
             accuracy = float(request.POST.get('accuracy', 0))
             selfie   = request.FILES.get('selfie')
 
-            distance   = haversine_distance(job.lat, job.lng, lat, lng)
-            is_inside  = distance <= job.geofence_radius
+            distance  = haversine_distance(job.lat, job.lng, lat, lng)
+            is_inside = distance <= job.geofence_radius
 
             record = CheckInRecord.objects.create(
                 job=job,
@@ -158,12 +154,11 @@ def checkin_view(request, job_pk):
                 selfie=selfie,
                 status='PENDING_APPROVAL',
             )
-            print("Created check-in record ID:", record.id, "Selfie:", record.selfie)
-            messages.success(request, f"Checked in to '{job.title}' successfully!")
+            return JsonResponse({'ok': True, 'record_pk': record.id, 'job_pk': job.pk})
         except Exception as e:
-            print("Check-in error:", str(e))
-            messages.error(request, f"Check-in failed: {e}")
+            return JsonResponse({'ok': False, 'error': str(e)}, status=400)
     return redirect('staff_dashboard')
+
 
 
 # ==========================
