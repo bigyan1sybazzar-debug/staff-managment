@@ -242,7 +242,7 @@
                 {% else %}
                     <button class="btn-outrange" id="btn-{{ job.pk }}"
                         data-job="{{ job.pk }}" data-lat="{{ job.lat }}" data-lng="{{ job.lng }}" data-radius="{{ job.geofence_radius }}"
-                        data-title="{{ job.title }}" data-record="">
+                        data-title="{{ job.title }}" data-selfie="{{ job.require_selfie }}" data-record="">
                         <i class="bi bi-camera me-1"></i>Out of Range
                     </button>
                 {% endif %}
@@ -285,7 +285,7 @@
                 {% else %}
                     <button class="btn-outrange" id="btn-{{ job.pk }}"
                         data-job="{{ job.pk }}" data-lat="{{ job.lat }}" data-lng="{{ job.lng }}" data-radius="{{ job.geofence_radius }}"
-                        data-title="{{ job.title }}" data-record="">
+                        data-title="{{ job.title }}" data-selfie="{{ job.require_selfie }}" data-record="">
                         <i class="bi bi-camera me-1"></i>Out of Range
                     </button>
                 {% endif %}
@@ -348,27 +348,26 @@
             <div style="color:#6b7280; font-size:12px; margin-top:4px;" id="modalGeoDist"></div>
         </div>
 
-        <!-- Camera Section -->
+        <!-- Camera Section — auto-opens inside geofence -->
         <div id="modalCameraSection" class="d-none">
-            <div class="camera-box">
-                <video id="modalCameraPreview" style="width:100%;max-height:240px;border-radius:8px;object-fit:cover;display:none;" autoplay playsinline muted></video>
+            <div style="position:relative; background:#000; border-radius:14px; overflow:hidden; margin-bottom:12px; min-height:180px;">
+                <video id="modalCameraPreview" style="width:100%; display:block; object-fit:cover; border-radius:14px;" autoplay playsinline muted></video>
                 <canvas id="modalCanvas" style="display:none;"></canvas>
-                <img id="modalSelfiePreview" style="width:100%;max-height:240px;border-radius:8px;object-fit:cover;display:none;">
-                <div id="modalCameraPrompt">
-                    <i class="bi bi-camera-fill" style="font-size:40px; color:#d1d5db; display:block; margin-bottom:10px;"></i>
-                    <button type="button" onclick="startCam()" style="font-size:13px; font-weight:600; border:1.5px solid #4f46e5; color:#4f46e5; background:#fff; padding:7px 18px; border-radius:20px; cursor:pointer;">
-                        <i class="bi bi-camera me-1"></i>Open Camera
-                    </button>
+                <!-- Starting indicator shown while camera loads -->
+                <div id="modalCameraStarting" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;background:#111;border-radius:14px;">
+                    <i class="bi bi-camera-video" style="font-size:36px; margin-bottom:8px;"></i>
+                    <div style="font-size:13px; font-weight:600;">Starting camera...</div>
                 </div>
             </div>
-            <div style="display:flex; gap:8px; margin-bottom:12px;">
-                <button id="capturePicBtn" onclick="capturePic()" style="display:none; flex:1; padding:9px; border-radius:12px; border:none; background:#4f46e5; color:#fff; font-weight:700; font-size:13px; cursor:pointer;">
-                    <i class="bi bi-circle-fill me-1"></i>Capture
-                </button>
-                <button id="retakePicBtn" onclick="retakePic()" style="display:none; flex:1; padding:9px; border-radius:12px; border:1.5px solid #d1d5db; background:#fff; color:#6b7280; font-weight:600; font-size:13px; cursor:pointer;">
-                    <i class="bi bi-arrow-counterclockwise me-1"></i>Retake
-                </button>
-            </div>
+            <!-- Captured selfie preview -->
+            <img id="modalSelfiePreview" style="width:100%; max-height:220px; border-radius:14px; object-fit:cover; display:none; margin-bottom:12px;">
+            <!-- Single tap-to-shoot button -->
+            <button id="capturePicBtn" onclick="capturePic()" style="display:none; width:100%; padding:14px; border-radius:14px; border:none; font-size:15px; font-weight:700; color:#fff; background:linear-gradient(135deg,#4f46e5,#7c3aed); cursor:pointer; margin-bottom:8px;">
+                <i class="bi bi-camera-fill me-2"></i><span id="captureLabel">Take Selfie &amp; Check In</span>
+            </button>
+            <button id="retakePicBtn" onclick="retakePic()" style="display:none; width:100%; padding:11px; border-radius:14px; border:1.5px solid #d1d5db; background:#fff; color:#6b7280; font-weight:600; font-size:13px; cursor:pointer; margin-bottom:8px;">
+                <i class="bi bi-arrow-counterclockwise me-1"></i>Retake Photo
+            </button>
         </div>
 
         <!-- Locked section -->
@@ -378,7 +377,7 @@
             <div style="color:#9ca3af; font-size:12px; margin-top:4px;">You must be inside the job geofence to proceed.</div>
         </div>
 
-        <!-- Confirm -->
+        <!-- Confirm (no-selfie path only) -->
         <button id="modalConfirmBtn" onclick="submitCheckAction()" class="btn-primary-modal d-none">
             Confirm Check In
         </button>
@@ -388,21 +387,17 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    // ── GPS State ──────────────────────────────────────────
     var gpsLat=0, gpsLng=0, gpsAcc=999, gpsReady=false;
-    var watchId=null;
 
     function startGPS() {
         if (!navigator.geolocation) return;
-        watchId = navigator.geolocation.watchPosition(function(p){
-            gpsLat   = p.coords.latitude;
-            gpsLng   = p.coords.longitude;
-            gpsAcc   = p.coords.accuracy;
-            gpsReady = true;
+        navigator.geolocation.watchPosition(function(p){
+            gpsLat=p.coords.latitude; gpsLng=p.coords.longitude; gpsAcc=p.coords.accuracy;
+            gpsReady=true;
             updateGpsUI();
             updateAllZoneBadges();
-        }, function(e){
-            console.log("GPS watch error:", e);
-        }, {enableHighAccuracy:true, maximumAge:5000});
+        }, null, {enableHighAccuracy:true, maximumAge:5000});
     }
 
     function updateGpsUI() {
@@ -410,40 +405,34 @@
         document.getElementById('topAccuracy').textContent = '\u00b1'+Math.round(gpsAcc)+'m';
         document.getElementById('statLat').textContent  = gpsLat.toFixed(6);
         document.getElementById('statLng').textContent  = gpsLng.toFixed(6);
-        var badge = document.getElementById('accuracyBadge');
-        var mode  = document.getElementById('statMode');
-        if (gpsAcc <= 20) {
-            badge.className='accuracy-badge accuracy-good'; badge.textContent='Excellent GPS (\u226420m) \u00b7 \u00b1'+Math.round(gpsAcc)+'m';
-            mode.textContent='High Accuracy'; mode.style.color='#10b981';
-        } else if (gpsAcc <= 40) {
-            badge.className='accuracy-badge accuracy-good'; badge.textContent='Acceptable GPS (<40m) \u00b7 \u00b1'+Math.round(gpsAcc)+'m';
-            mode.textContent='High Accuracy'; mode.style.color='#10b981';
-        } else {
-            badge.className='accuracy-badge accuracy-ok'; badge.textContent='Low GPS (\u00b1'+Math.round(gpsAcc)+'m)';
-            mode.textContent='Low Accuracy'; mode.style.color='#f59e0b';
-        }
+        var badge=document.getElementById('accuracyBadge'), mode=document.getElementById('statMode');
+        if (gpsAcc<=40) { badge.className='accuracy-badge accuracy-good'; badge.textContent='Acceptable GPS (<40m) \u00b7 \u00b1'+Math.round(gpsAcc)+'m'; mode.textContent='High Accuracy'; mode.style.color='#10b981'; }
+        else            { badge.className='accuracy-badge accuracy-ok';   badge.textContent='Low GPS (\u00b1'+Math.round(gpsAcc)+'m)'; mode.textContent='Low Accuracy'; mode.style.color='#f59e0b'; }
+    }
+
+    function haversine(la1,ln1,la2,ln2) {
+        var R=6371000,dL=(la2-la1)*Math.PI/180,dN=(ln2-ln1)*Math.PI/180;
+        var a=Math.sin(dL/2)*Math.sin(dL/2)+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dN/2)*Math.sin(dN/2);
+        return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
     }
 
     function updateAllZoneBadges() {
         document.querySelectorAll('[data-lat]').forEach(function(btn){
-            var jlat   = parseFloat(btn.dataset.lat);
-            var jlng   = parseFloat(btn.dataset.lng);
-            var radius = parseFloat(btn.dataset.radius);
-            var jobpk  = btn.dataset.job;
-            var dist   = haversine(gpsLat, gpsLng, jlat, jlng);
-            var inside = dist <= radius;
-
-            var zone = document.getElementById('zone-'+jobpk);
+            var jlat=parseFloat(btn.dataset.lat), jlng=parseFloat(btn.dataset.lng);
+            var radius=parseFloat(btn.dataset.radius), jobpk=btn.dataset.job;
+            var requireSelfie=(btn.dataset.selfie==='True'||btn.dataset.selfie===true);
+            var dist=haversine(gpsLat,gpsLng,jlat,jlng), inside=dist<=radius;
+            var zone=document.getElementById('zone-'+jobpk);
             if (inside) {
                 zone.className='zone-badge zone-in';
                 zone.innerHTML='<span class="zone-dot zone-dot-in"></span>In Zone<br><span style="font-size:10px;">'+Math.round(dist)+'m</span>';
                 btn.className='btn-checkin';
                 btn.innerHTML='<i class="bi bi-box-arrow-in-right"></i> Check In';
-                btn.onclick=function(){ openModal('in',jobpk,btn.dataset.title,jlat,jlng,radius,''); };
+                btn.onclick=(function(pk,t,lt,lg,r,rs){ return function(){ openModal('in',pk,t,lt,lg,r,'',rs); }; })(jobpk,btn.dataset.title,jlat,jlng,radius,requireSelfie);
             } else {
-                var dispDist = dist>=1000 ? (dist/1000).toFixed(2)+' km' : Math.round(dist)+'m';
+                var d=dist>=1000?(dist/1000).toFixed(2)+' km':Math.round(dist)+'m';
                 zone.className='zone-badge zone-out';
-                zone.innerHTML='<span class="zone-dot zone-dot-out"></span>Outside<br><span style="font-size:10px;">'+dispDist+'</span>';
+                zone.innerHTML='<span class="zone-dot zone-dot-out"></span>Outside<br><span style="font-size:10px;">'+d+'</span>';
                 btn.className='btn-outrange';
                 btn.innerHTML='<i class="bi bi-camera me-1"></i>Out of Range';
                 btn.onclick=null;
@@ -451,49 +440,46 @@
         });
     }
 
-    function haversine(la1,ln1,la2,ln2) {
-        var R=6371000, dL=(la2-la1)*Math.PI/180, dN=(ln2-ln1)*Math.PI/180;
-        var a=Math.sin(dL/2)*Math.sin(dL/2)+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dN/2)*Math.sin(dN/2);
-        return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-    }
-
+    // ── Tab ────────────────────────────────────────────────
     function showTab(tab) {
-        ['jobs','history','profile'].forEach(function(t){
-            document.getElementById('tab-'+t).style.display = t===tab?'':'none';
-        });
+        ['jobs','history','profile'].forEach(function(t){ document.getElementById('tab-'+t).style.display=t===tab?'':'none'; });
         document.querySelectorAll('.nav-tab').forEach(function(el){ el.classList.remove('active'); });
         event.target.closest('.nav-tab').classList.add('active');
     }
 
+    // ── Modal State ────────────────────────────────────────
     var _mode='in', _jobPk=null, _recordPk=null, _jlat=0, _jlng=0, _jRadius=75;
-    var _stream=null, _blob=null;
+    var _requireSelfie=false, _stream=null, _blob=null;
 
-    function openModal(mode, jobPk, title, jlat, jlng, radius, recordPk) {
+    function openModal(mode, jobPk, title, jlat, jlng, radius, recordPk, requireSelfie) {
         _mode=mode; _jobPk=jobPk; _recordPk=recordPk;
         _jlat=parseFloat(jlat); _jlng=parseFloat(jlng); _jRadius=parseFloat(radius);
+        _requireSelfie = (requireSelfie===true||requireSelfie==='True'||requireSelfie==='true');
         _blob=null;
 
-        document.getElementById('modalTitle').textContent    = mode==='in' ? 'Check In' : 'Check Out';
+        document.getElementById('modalTitle').textContent    = mode==='in'?'Check In':'Check Out';
         document.getElementById('modalSubtitle').textContent = title;
-        document.getElementById('modalConfirmBtn').textContent = mode==='in' ? 'Confirm Check In' : 'Confirm Check Out';
-        document.getElementById('modalConfirmBtn').className   = mode==='in' ? 'btn-primary-modal d-none' : 'btn-danger-modal d-none';
+        document.getElementById('captureLabel').textContent  = mode==='in'?'Take Selfie \u0026 Check In':'Take Selfie \u0026 Check Out';
+        document.getElementById('modalConfirmBtn').textContent = mode==='in'?'Confirm Check In':'Confirm Check Out';
+        document.getElementById('modalConfirmBtn').className   = mode==='in'?'btn-primary-modal d-none':'btn-danger-modal d-none';
+
+        // Reset all sections
         document.getElementById('modalGeofenceBox').classList.add('d-none');
         document.getElementById('modalCameraSection').classList.add('d-none');
         document.getElementById('modalLockedSection').classList.add('d-none');
+        document.getElementById('modalConfirmBtn').classList.add('d-none');
         document.getElementById('modalGpsBox').className='gps-status-box loading';
         document.getElementById('modalGpsBox').innerHTML='<div class="spinner-border spinner-border-sm text-secondary" role="status"></div><span style="font-size:13px;font-weight:600;">Detecting your location...</span>';
         resetCamera();
 
         document.getElementById('checkOverlay').classList.add('open');
 
-        if (gpsReady) {
-            showGeofenceResult();
-        } else {
+        if (gpsReady) { showGeofenceResult(); }
+        else {
             navigator.geolocation.getCurrentPosition(function(p){
                 gpsLat=p.coords.latitude; gpsLng=p.coords.longitude; gpsAcc=p.coords.accuracy; gpsReady=true;
                 updateGpsUI(); updateAllZoneBadges(); showGeofenceResult();
             }, function(e){
-                document.getElementById('modalGpsBox').className='gps-status-box';
                 document.getElementById('modalGpsBox').style.background='#fffbeb';
                 document.getElementById('modalGpsBox').innerHTML='<i class="bi bi-exclamation-triangle-fill" style="color:#f59e0b;font-size:20px;"></i><span style="font-size:13px;font-weight:600;">GPS error: '+e.message+'</span>';
             }, {enableHighAccuracy:true, timeout:10000, maximumAge:0});
@@ -501,140 +487,159 @@
     }
 
     function showGeofenceResult() {
-        var dist   = haversine(gpsLat, gpsLng, _jlat, _jlng);
-        var inside = dist <= _jRadius;
-        var dispDist = dist>=1000 ? (dist/1000).toFixed(2)+' km' : Math.round(dist)+'m';
+        var dist=haversine(gpsLat,gpsLng,_jlat,_jlng), inside=dist<=_jRadius;
+        var dispDist=dist>=1000?(dist/1000).toFixed(2)+' km':Math.round(dist)+'m';
 
-        document.getElementById('modalGpsBox').className = 'gps-status-box '+(inside?'good':'outside');
-        document.getElementById('modalGpsBox').innerHTML = '<i class="bi bi-geo-alt-fill" style="font-size:20px;color:'+(inside?'#10b981':'#ef4444')+';"></i>'
+        document.getElementById('modalGpsBox').className='gps-status-box '+(inside?'good':'outside');
+        document.getElementById('modalGpsBox').innerHTML=
+            '<i class="bi bi-geo-alt-fill" style="font-size:20px;color:'+(inside?'#10b981':'#ef4444')+'"></i>'
             +'<div><div style="font-size:13px;font-weight:700;">'+gpsLat.toFixed(5)+', '+gpsLng.toFixed(5)+'</div>'
             +'<div style="font-size:11px;color:#6b7280;">Accuracy: \u00b1'+Math.round(gpsAcc)+'m</div></div>';
 
-        var geoBox = document.getElementById('modalGeofenceBox');
+        var geoBox=document.getElementById('modalGeofenceBox');
         geoBox.classList.remove('d-none');
         if (inside) {
             geoBox.className='geofence-box inside';
             document.getElementById('modalGeoIcon').textContent='\u2705';
-            document.getElementById('modalGeoMsg').innerHTML='<span style="color:#059669;">Inside Geofence &mdash; Camera Unlocked</span>';
-            document.getElementById('modalGeoDist').textContent=Math.round(dist)+'m from site center (limit: '+_jRadius+'m)';
-            document.getElementById('modalCameraSection').classList.remove('d-none');
+            document.getElementById('modalGeoMsg').innerHTML='<span style="color:#059669;">Inside Geofence \u2014 Camera Unlocked</span>';
+            document.getElementById('modalGeoDist').textContent=Math.round(dist)+'m from site (limit: '+_jRadius+'m)';
             document.getElementById('modalLockedSection').classList.add('d-none');
+
+            if (_requireSelfie) {
+                // Selfie required: open camera immediately
+                document.getElementById('modalCameraSection').classList.remove('d-none');
+                startCam();
+            } else {
+                // No selfie needed: show confirm button directly
+                document.getElementById('modalConfirmBtn').classList.remove('d-none');
+            }
         } else {
             geoBox.className='geofence-box outside';
             document.getElementById('modalGeoIcon').textContent='\uD83D\uDD12';
-            document.getElementById('modalGeoMsg').innerHTML='<span style="color:#dc2626;">Outside Geofence &mdash; Camera Locked</span>';
+            document.getElementById('modalGeoMsg').innerHTML='<span style="color:#dc2626;">Outside Geofence \u2014 Camera Locked</span>';
             document.getElementById('modalGeoDist').textContent=dispDist+' from site (must be within '+_jRadius+'m)';
-            document.getElementById('modalCameraSection').classList.add('d-none');
             document.getElementById('modalLockedSection').classList.remove('d-none');
         }
     }
 
-    function closeModal() {
-        document.getElementById('checkOverlay').classList.remove('open');
-        stopCam();
-    }
+    function closeModal() { document.getElementById('checkOverlay').classList.remove('open'); stopCam(); }
     function closeModalIfOutside(e) { if(e.target===document.getElementById('checkOverlay')) closeModal(); }
 
+    // ── Camera ─────────────────────────────────────────────
     function startCam() {
-        navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false}).then(function(s){
+        var starting=document.getElementById('modalCameraStarting');
+        if (starting) starting.style.display='flex';
+        navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}, audio:false}).then(function(s){
             _stream=s;
             var v=document.getElementById('modalCameraPreview');
-            v.srcObject=s; v.style.display=''; 
-            document.getElementById('modalCameraPrompt').style.display='none';
-            document.getElementById('capturePicBtn').style.display='';
-        }).catch(function(e){ alert('Camera error: '+e.message); });
+            v.srcObject=s;
+            v.style.display='block';
+            v.onloadedmetadata=function(){
+                if (starting) starting.style.display='none';
+                document.getElementById('capturePicBtn').style.display='';
+            };
+        }).catch(function(e){
+            if (starting) {
+                starting.innerHTML='<i class="bi bi-exclamation-triangle" style="font-size:28px;color:#ef4444;margin-bottom:8px;"></i><div style="color:#ef4444;font-size:13px;">Camera error: '+e.message+'</div><button onclick="startCam()" style="margin-top:12px;padding:8px 18px;border-radius:20px;border:1.5px solid #4f46e5;color:#4f46e5;background:#fff;font-weight:600;font-size:13px;cursor:pointer;">Try Again</button>';
+            }
+        });
     }
 
     function capturePic() {
         var v=document.getElementById('modalCameraPreview');
         var c=document.getElementById('modalCanvas');
+        if (!v.videoWidth) { alert('Camera not ready yet — please wait a moment.'); return; }
         c.width=v.videoWidth; c.height=v.videoHeight;
         c.getContext('2d').drawImage(v,0,0);
+
+        var btn=document.getElementById('capturePicBtn');
+        btn.disabled=true;
+        btn.innerHTML='<i class="bi bi-arrow-clockwise me-2"></i>Submitting...';
+
         c.toBlob(function(b){
+            if (!b) { btn.disabled=false; btn.innerHTML='<i class="bi bi-camera-fill me-2"></i>Retry'; alert('Photo capture failed. Try again.'); return; }
             _blob=b;
+            // Show preview
             var img=document.getElementById('modalSelfiePreview');
             img.src=URL.createObjectURL(b); img.style.display='';
             v.style.display='none';
-            document.getElementById('capturePicBtn').style.display='none';
-            document.getElementById('retakePicBtn').style.display='';
+            document.getElementById('modalCameraStarting').style.display='none';
             stopCam();
-            document.getElementById('modalConfirmBtn').classList.remove('d-none');
-        },'image/jpeg',0.85);
+            // Auto-submit immediately
+            submitCheckAction();
+        }, 'image/jpeg', 0.85);
     }
 
     function retakePic() {
         _blob=null;
         document.getElementById('modalSelfiePreview').style.display='none';
         document.getElementById('retakePicBtn').style.display='none';
-        document.getElementById('modalConfirmBtn').classList.add('d-none');
+        document.getElementById('capturePicBtn').disabled=false;
+        document.getElementById('capturePicBtn').innerHTML='<i class="bi bi-camera-fill me-2"></i><span id="captureLabel">'+(_mode==='in'?'Take Selfie & Check In':'Take Selfie & Check Out')+'</span>';
         startCam();
     }
 
     function stopCam() { if(_stream){_stream.getTracks().forEach(function(t){t.stop();});_stream=null;} }
     function resetCamera() {
-        _blob=null; _stream=null;
+        _blob=null; stopCam();
         document.getElementById('modalCameraPreview').style.display='none';
         document.getElementById('modalSelfiePreview').style.display='none';
-        document.getElementById('modalCameraPrompt').style.display='';
+        var s=document.getElementById('modalCameraStarting'); if(s) s.style.display='flex';
         document.getElementById('capturePicBtn').style.display='none';
+        document.getElementById('capturePicBtn').disabled=false;
         document.getElementById('retakePicBtn').style.display='none';
     }
 
+    // ── Submit ─────────────────────────────────────────────
     function submitCheckAction() {
         var fd=new FormData();
         fd.append('csrfmiddlewaretoken','{{ csrf_token }}');
         fd.append('lat',gpsLat); fd.append('lng',gpsLng); fd.append('accuracy',gpsAcc);
-        if (_blob) fd.append('selfie',_blob,'selfie.jpg');
-        var url=_mode==='in' ? '/checkin/'+_jobPk+'/' : '/checkout/'+_recordPk+'/';
-        var btn=document.getElementById('modalConfirmBtn');
-        btn.disabled=true; btn.textContent='Submitting...';
+        if (_blob) fd.append('selfie', _blob, 'selfie.jpg');
+        var url=_mode==='in'?'/checkin/'+_jobPk+'/':'/checkout/'+_recordPk+'/';
+
+        // Disable confirm button if visible (no-selfie path)
+        var confirmBtn=document.getElementById('modalConfirmBtn');
+        if (!confirmBtn.classList.contains('d-none')) { confirmBtn.disabled=true; confirmBtn.textContent='Submitting...'; }
 
         fetch(url, {method:'POST', body:fd}).then(function(res){
-            // Check-in returns JSON; check-out still redirects
-            var ct = res.headers.get('content-type') || '';
-            if (ct.indexOf('application/json') !== -1) {
+            var ct=res.headers.get('content-type')||'';
+            if (ct.indexOf('application/json')!==-1) {
                 return res.json().then(function(data){
                     if (data.ok) {
                         closeModal();
-                        // Immediately swap card button to Check Out
                         swapToCheckOut(_jobPk, data.record_pk);
                     } else {
-                        btn.disabled=false;
-                        btn.textContent='Retry';
-                        alert('Check-in failed: '+(data.error||'Unknown error'));
+                        var cpBtn=document.getElementById('capturePicBtn');
+                        cpBtn.disabled=false; cpBtn.innerHTML='<i class="bi bi-camera-fill me-2"></i>Retry';
+                        document.getElementById('retakePicBtn').style.display='';
+                        confirmBtn.disabled=false; confirmBtn.textContent=_mode==='in'?'Confirm Check In':'Confirm Check Out';
+                        alert('Failed: '+(data.error||'Unknown error'));
                     }
                 });
             } else {
-                // checkout redirect — reload page
                 window.location.href='/my-dashboard/';
             }
-        }).catch(function(e){ btn.disabled=false; btn.textContent='Retry'; alert(e.message); });
+        }).catch(function(e){
+            document.getElementById('capturePicBtn').disabled=false;
+            document.getElementById('retakePicBtn').style.display='';
+            alert(e.message);
+        });
     }
 
     function swapToCheckOut(jobPk, recordPk) {
-        // Update zone badge to green Checked In
-        var zone = document.getElementById('zone-'+jobPk);
-        if (zone) {
-            zone.className='zone-badge zone-in';
-            zone.innerHTML='<span class="zone-dot zone-dot-in"></span>Checked In';
-        }
-        // Swap button from Check In to Check Out
-        var btn = document.getElementById('btn-'+jobPk);
+        var zone=document.getElementById('zone-'+jobPk);
+        if (zone) { zone.className='zone-badge zone-in'; zone.innerHTML='<span class="zone-dot zone-dot-in"></span>Checked In'; }
+        var btn=document.getElementById('btn-'+jobPk);
         if (btn) {
+            var title=btn.dataset.title||'';
             btn.className='btn-checkout';
             btn.innerHTML='<i class="bi bi-box-arrow-right"></i> Check Out';
-            btn.onclick=function(){ openModal('out', jobPk, btn.dataset.title||'', _jlat, _jlng, _jRadius, recordPk); };
             btn.removeAttribute('data-lat');
+            btn.onclick=(function(rp,t){ return function(){ openModal('out',jobPk,t,_jlat,_jlng,_jRadius,rp,false); }; })(recordPk, title);
         }
-        // Also update the status badge inside the card
-        var card = document.getElementById('card-'+jobPk);
-        if (card) {
-            var upcoming = card.querySelector('.jbadge-upcoming');
-            if (upcoming) {
-                upcoming.className='jbadge jbadge-active';
-                upcoming.textContent='Checked In';
-            }
-        }
+        var card=document.getElementById('card-'+jobPk);
+        if (card) { var u=card.querySelector('.jbadge-upcoming'); if(u){u.className='jbadge jbadge-active'; u.textContent='Checked In';} }
     }
 
     function viewJobDetail(pk,title,site,addr,start,end,radius) {
@@ -642,7 +647,6 @@
     }
 
     startGPS();
-
 </script>
 </body>
 </html>
