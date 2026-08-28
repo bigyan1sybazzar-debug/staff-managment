@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block title %}Jobs Directory — StaffTracker{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-0">💼 Jobs & Work Sites</h2>
+        <p class="text-muted mb-0">Create, edit, and assign jobs to staff members with GPS geofencing parameters.</p>
+    </div>
+    <div>
+        <a href="{% url 'job_create' %}" class="btn btn-primary-gradient rounded-4 px-4">
+            <i class="bi bi-plus-circle-fill me-2"></i>Create New Job
+        </a>
+    </div>
+</div>
+
+<!-- Search & Filters -->
+<div class="card p-3 mb-4">
+    <form method="GET" class="row g-3 align-items-center">
+        <div class="col-md-7">
+            <div class="input-group">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Search by title, code, site name, or address..." value="{{ request.GET.search|default:'' }}">
+            </div>
+        </div>
+        <div class="col-md-4">
+            <select name="status" class="form-select">
+                <option value="">All Statuses</option>
+                <option value="UPCOMING" {% if request.GET.status == 'UPCOMING' %}selected{% endif %}>Upcoming</option>
+                <option value="CHECKED_IN" {% if request.GET.status == 'CHECKED_IN' %}selected{% endif %}>Checked In</option>
+                <option value="COMPLETED" {% if request.GET.status == 'COMPLETED' %}selected{% endif %}>Completed</option>
+            </select>
+        </div>
+        <div class="col-md-1">
+            <button type="submit" class="btn btn-dark w-100 rounded-3">Filter</button>
+        </div>
+    </form>
+</div>
+
+<!-- Jobs Grid -->
+<div class="row g-4">
+    {% for job in jobs %}
+        <div class="col-md-6 col-xl-4">
+            <div class="card card-hover h-100 p-4 d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <span class="badge bg-indigo-light text-indigo fw-mono mb-2" style="font-size:0.85rem;">{{ job.code }}</span>
+                        <h5 class="fw-bold mb-1 text-dark">{{ job.title }}</h5>
+                    </div>
+                    <span class="badge rounded-pill 
+                        {% if job.status == 'COMPLETED' %}bg-success-subtle text-success
+                        {% elif job.status == 'CHECKED_IN' %}bg-info-subtle text-info
+                        {% else %}bg-secondary-subtle text-secondary{% endif %} px-2">
+                        {{ job.get_status_display }}
+                    </span>
+                </div>
+                
+                <p class="text-muted small mb-3 flex-grow-1">{{ job.description|truncatewords:20|default:"No description provided." }}</p>
+                
+                <div class="bg-light rounded-3 p-3 mb-4 small text-muted">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="bi bi-geo-alt-fill text-danger"></i>
+                        <span class="text-dark fw-semibold">{{ job.site_name }}</span>
+                    </div>
+                    <div class="text-truncate ps-4 mb-3" title="{{ job.address }}">{{ job.address }}</div>
+                    
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="fw-semibold text-dark">Date & Time</div>
+                            <div>{{ job.date|date:"M d, Y" }}</div>
+                            <div>{{ job.start_time|time:"H:i" }} - {{ job.end_time|time:"H:i" }}</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="fw-semibold text-dark">Geofence</div>
+                            <div>Radius: {{ job.geofence_radius }}m</div>
+                            <div>Camera: {% if job.require_selfie %}Yes{% else %}No{% endif %}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Assigned Staff -->
+                <div class="mb-4">
+                    <div class="small fw-semibold text-muted mb-2">Assigned Staff Members:</div>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for staff in job.assigned_staff.all %}
+                            <span class="badge bg-white text-dark border p-2 d-inline-flex align-items-center gap-1" style="border-radius: 8px;">
+                                <i class="bi bi-person-fill text-indigo"></i>
+                                {{ staff.get_full_name|default:staff.username }}
+                            </span>
+                        {% empty %}
+                            <span class="text-muted small italic">No staff assigned yet</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mt-auto border-top pt-3">
+                    <a href="{% url 'job_update' job.pk %}" class="btn btn-sm btn-light border w-50 rounded-3">
+                        <i class="bi bi-pencil-square me-1"></i>Edit
+                    </a>
+                    <a href="{% url 'job_delete' job.pk %}" class="btn btn-sm btn-outline-danger w-50 rounded-3">
+                        <i class="bi bi-trash3 me-1"></i>Delete
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <div class="col-12">
+            <div class="card p-5 text-center">
+                <i class="bi bi-briefcase text-muted fs-1 mb-3"></i>
+                <h5 class="fw-bold text-muted">No Jobs Found</h5>
+                <p class="text-muted small">Create scheduling parameters by clicking "Create New Job".</p>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<style>
+    .bg-indigo-light { background-color: rgba(99, 102, 241, 0.1) !important; }
+    .bg-success-subtle { background-color: rgba(25, 135, 84, 0.1) !important; }
+    .bg-info-subtle { background-color: rgba(13, 202, 240, 0.1) !important; }
+    .bg-secondary-subtle { background-color: rgba(108, 117, 125, 0.1) !important; }
+    .text-indigo { color: #6366f1; }
+</style>
+{% endblock %}

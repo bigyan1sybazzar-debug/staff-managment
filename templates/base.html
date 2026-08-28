@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Staff Tracking System{% endblock %}</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Google Fonts (Outfit) -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Leaflet Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            --sidebar-width: 260px;
+            --bg-color: #f8fafc;
+            --card-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05), 0 5px 15px -8px rgba(0, 0, 0, 0.05);
+            --transition-speed: 0.3s;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: #1e293b;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background: #ffffff;
+            border-right: 1px solid #e2e8f0;
+            z-index: 100;
+            transition: all var(--transition-speed);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-brand {
+            padding: 1.5rem 1.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .brand-logo {
+            width: 38px;
+            height: 38px;
+            background: var(--primary-gradient);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.25rem;
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+        }
+
+        .brand-name {
+            font-weight: 700;
+            font-size: 1.2rem;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 1.5rem 1rem;
+            margin: 0;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .menu-item a {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.85rem 1.25rem;
+            color: #64748b;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .menu-item a:hover {
+            background-color: #f1f5f9;
+            color: #0f172a;
+        }
+
+        .menu-item.active a {
+            background: var(--primary-gradient);
+            color: #ffffff;
+            box-shadow: 0 4px 20px -2px rgba(99, 102, 241, 0.35);
+        }
+
+        .sidebar-user {
+            padding: 1.25rem 1.5rem;
+            border-top: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background-color: #e2e8f0;
+            object-fit: cover;
+            border: 2px solid #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .user-info {
+            flex-grow: 1;
+            min-width: 0;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 0.1rem;
+            color: #1e293b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-role {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        /* Main Content Wrapper */
+        .main-wrapper {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            transition: all var(--transition-speed);
+        }
+
+        /* Top Navbar */
+        .top-navbar {
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 99;
+        }
+
+        .navbar-search {
+            position: relative;
+            max-width: 320px;
+            width: 100%;
+        }
+
+        .navbar-search input {
+            padding: 0.5rem 1rem 0.5rem 2.5rem;
+            border-radius: 20px;
+            border: 1px solid #cbd5e1;
+            font-size: 0.9rem;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .navbar-search input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+            outline: none;
+        }
+
+        .navbar-search i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+        }
+
+        .navbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .action-btn {
+            color: #64748b;
+            font-size: 1.25rem;
+            cursor: pointer;
+            transition: color 0.2s;
+            position: relative;
+        }
+
+        .action-btn:hover {
+            color: #0f172a;
+        }
+
+        .notification-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #ef4444;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            right: 2px;
+        }
+
+        /* Card Customization */
+        .card {
+            border: none;
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            background: #ffffff;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.08), 0 5px 20px -8px rgba(0, 0, 0, 0.08);
+        }
+
+        /* Custom buttons */
+        .btn-primary-gradient {
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            font-weight: 500;
+            padding: 0.6rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary-gradient:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
+            color: white;
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        /* Micro-animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease forwards;
+        }
+
+        /* Footer styling */
+        .footer {
+            padding: 1.5rem 2rem;
+            background: #ffffff;
+            border-top: 1px solid #e2e8f0;
+            margin-top: auto;
+            text-align: center;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+    {% if user.is_authenticated %}
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-logo"><i class="bi bi-geo-alt-fill"></i></div>
+            <div class="brand-name">StaffTracker</div>
+        </div>
+        
+        <ul class="sidebar-menu">
+            <li class="menu-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <a href="{% url 'dashboard' %}">
+                    <i class="bi bi-grid-1x2-fill"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            
+            <li class="menu-item {% if request.resolver_match.url_name == 'map_view' %}active{% endif %}">
+                <a href="{% url 'map_view' %}">
+                    <i class="bi bi-map-fill"></i>
+                    <span>Live Tracking Map</span>
+                </a>
+            </li>
+            
+            <li class="menu-item {% if 'staff' in request.path %}active{% endif %}">
+                <a href="{% url 'staff_list' %}">
+                    <i class="bi bi-people-fill"></i>
+                    <span>Staff Directory</span>
+                </a>
+            </li>
+
+            <li class="menu-item {% if 'jobs' in request.path %}active{% endif %}">
+                <a href="{% url 'job_list' %}">
+                    <i class="bi bi-briefcase-fill"></i>
+                    <span>Jobs & Sites</span>
+                </a>
+            </li>
+            
+            <li class="menu-item {% if request.resolver_match.url_name == 'history' %}active{% endif %}">
+                <a href="{% url 'history' %}">
+                    <i class="bi bi-clock-history"></i>
+                    <span>History & Logs</span>
+                </a>
+            </li>
+        </ul>
+
+        <div class="sidebar-user">
+            {% if user.profile.avatar %}
+                <img src="{{ user.profile.avatar.url }}" class="user-avatar" alt="Avatar">
+            {% else %}
+                <div class="user-avatar d-flex align-items-center justify-content-center bg-light text-primary fw-bold">
+                    {{ user.username|slice:":2"|upper }}
+                </div>
+            {% endif %}
+            <div class="user-info">
+                <div class="user-name">{{ user.get_full_name|default:user.username }}</div>
+                <div class="user-role">{{ user.profile.role }}</div>
+            </div>
+            <a href="{% url 'logout' %}" class="text-danger" title="Logout">
+                <i class="bi bi-box-arrow-right fs-5"></i>
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Main Content -->
+    <div class="main-wrapper" style="{% if not user.is_authenticated %}margin-left: 0;{% endif %}">
+        {% if user.is_authenticated %}
+        <!-- Top Navbar -->
+        <div class="top-navbar">
+            <div class="navbar-search">
+                <i class="bi bi-search"></i>
+                <input type="text" placeholder="Search staff, sites, tasks...">
+            </div>
+            
+            <div class="navbar-actions">
+                <div class="action-btn">
+                    <i class="bi bi-bell-fill"></i>
+                    <span class="notification-dot"></span>
+                </div>
+                <div class="action-btn">
+                    <i class="bi bi-gear-fill"></i>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="container-fluid p-4 animate-fade-in">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show rounded-4 shadow-sm mb-4 border-0" role="alert">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-browser-dismiss="alert" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            &copy; 2026 <strong>{{ settings.company_name|default:"Staff Tracker" }}</strong>. All rights reserved. Managed with Django.
+        </footer>
+    </div>
+
+    <!-- Bootstrap Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Leaflet JS Map -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

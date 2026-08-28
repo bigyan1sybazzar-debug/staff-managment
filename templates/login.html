@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block title %}Login — StaffTracker{% endblock %}
+
+{% block content %}
+<div class="row align-items-center justify-content-center min-vh-100" style="margin-top: -80px;">
+    <div class="col-md-5 col-lg-4">
+        <div class="card p-4 border-0 shadow-lg" style="border-radius: 24px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);">
+            <div class="text-center mb-4">
+                <div class="d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px; background: var(--primary-gradient); border-radius: 18px; color: white; box-shadow: 0 8px 24px rgba(124, 58, 237, 0.35);">
+                    <i class="bi bi-geo-alt-fill fs-2"></i>
+                </div>
+                <h3 class="fw-bold mb-1" style="background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Welcome Back</h3>
+                <p class="text-muted small">Sign in to manage and track operations</p>
+            </div>
+
+            <form method="POST">
+                {% csrf_token %}
+                
+                <div class="form-floating mb-3">
+                    <input type="text" name="username" class="form-control rounded-4 border-light-subtle" id="usernameInput" placeholder="Username" required>
+                    <label for="usernameInput" class="text-muted"><i class="bi bi-person me-2"></i>Username</label>
+                </div>
+                
+                <div class="form-floating mb-3">
+                    <input type="password" name="password" class="form-control rounded-4 border-light-subtle" id="passwordInput" placeholder="Password" required>
+                    <label for="passwordInput" class="text-muted"><i class="bi bi-lock me-2"></i>Password</label>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="rememberMe">
+                        <label class="form-check-label text-muted small" for="rememberMe">
+                            Remember me
+                        </label>
+                    </div>
+                    <a href="#" class="text-decoration-none small text-indigo fw-semibold">Forgot password?</a>
+                </div>
+
+                <button type="submit" class="btn btn-primary-gradient w-100 py-3 rounded-4 fw-semibold fs-6">
+                    Sign In <i class="bi bi-arrow-right ms-2"></i>
+                </button>
+            </form>
+
+            <div class="text-center mt-4">
+                <small class="text-muted">Default admin: admin / admin123 (after migrations & superuser creation)</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .text-indigo {
+        color: #6366f1;
+    }
+    .text-indigo:hover {
+        color: #4f46e5;
+    }
+    .form-control:focus {
+        border-color: #6366f1 !important;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+    }
+    /* Hide default sidebar/navbar/footer on login page */
+    .sidebar, .top-navbar, .footer {
+        display: none !important;
+    }
+    .main-wrapper {
+        margin-left: 0 !important;
+    }
+</style>
+{% endblock %}

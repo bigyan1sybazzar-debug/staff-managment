@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if form_type == 'update' %}Update Job — StaffTracker{% else %}Create Job — StaffTracker{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10 col-xl-9">
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <a href="{% url 'job_list' %}" class="btn btn-sm btn-light border rounded-circle" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <div>
+                <h2 class="fw-bold mb-0">{% if form_type == 'update' %}✏️ Edit Job Details{% else %}💼 Create New Job Assignment{% endif %}</h2>
+                <p class="text-muted mb-0">Configure scheduling, geofence coordinates, checklists, and assign staff members.</p>
+            </div>
+        </div>
+
+        <div class="card p-4">
+            <form method="POST" id="jobForm">
+                {% csrf_token %}
+                
+                <h5 class="fw-bold text-dark border-bottom pb-2 mb-4">Basic Information</h5>
+                
+                <div class="row g-3 mb-4">
+                    <div class="col-md-8">
+                        <label class="form-label fw-semibold text-muted small">Job Title (Required)</label>
+                        <input type="text" name="title" class="form-control rounded-3" value="{{ job.title|default:'' }}" required placeholder="e.g. Warehouse Guard Patrol">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold text-muted small">Unique Job Code (Required)</label>
+                        <input type="text" name="code" class="form-control rounded-3 fw-mono text-indigo" value="{{ job.code|default:'' }}" required placeholder="e.g. JOB-A101" {% if form_type == 'update' %}readonly{% endif %}>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold text-muted small">Job Description</label>
+                        <textarea name="description" class="form-control rounded-3" rows="3" placeholder="Provide general details about the shift tasks...">{{ job.description|default:'' }}</textarea>
+                    </div>
+                </div>
+
+                <h5 class="fw-bold text-dark border-bottom pb-2 mb-4">Location & Geofencing Parameters</h5>
+                
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold text-muted small">Site Name (Required)</label>
+                        <input type="text" name="site_name" class="form-control rounded-3" value="{{ job.site_name|default:'' }}" required placeholder="e.g. Thimi Storage Block B">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold text-muted small">Geofence Radius (meters)</label>
+                        <input type="number" name="geofence_radius" class="form-control rounded-3" value="{{ job.geofence_radius|default:75 }}" required>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold text-muted small">Physical Address (Required)</label>
+                        <textarea name="address" class="form-control rounded-3" rows="2" required placeholder="Full address details...">{{ job.address|default:'' }}</textarea>
+                    </div>
+                    
+                    <!-- Lat / Lng inputs with detect button -->
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold text-muted small">Latitude Coordinates (Required)</label>
+                        <input type="number" step="any" name="lat" id="jobLat" class="form-control rounded-3" value="{{ job.lat|default:'' }}" required placeholder="e.g. 27.6715">
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold text-muted small">Longitude Coordinates (Required)</label>
+                        <input type="number" step="any" name="lng" id="jobLng" class="form-control rounded-3" value="{{ job.lng|default:'' }}" required placeholder="e.g. 85.3385">
+                    </div>
+                    <div class="col-md-2 align-self-end">
+                        <button type="button" class="btn btn-outline-primary w-100 rounded-3 py-2" onclick="detectAdminLocation()" title="Detect Current Location">
+                            <i class="bi bi-geo-fill me-1"></i> Detect
+                        </button>
+                    </div>
+                    <div class="col-12">
+                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i>You can find coordinates using Google Maps (Right-click site -> click coordinates to copy) or click the **Detect** button to fetch your current position.</small>
+                    </div>
+                </div>
+
+                <h5 class="fw-bold text-dark border-bottom pb-2 mb-4">Scheduling & Shifts</h5>
+                
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold text-muted small">Job Date (Required)</label>
+                        <input type="date" name="date" class="form-control rounded-3" value="{{ job.date|date:'Y-m-d'|default:'' }}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold text-muted small">Shift Start Time (Required)</label>
+                        <input type="time" name="start_time" class="form-control rounded-3" value="{{ job.start_time|time:'H:i'|default:'' }}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold text-muted small">Shift End Time (Required)</label>
+                        <input type="time" name="end_time" class="form-control rounded-3" value="{{ job.end_time|time:'H:i'|default:'' }}" required>
+                    </div>
+                </div>
+
+                <h5 class="fw-bold text-dark border-bottom pb-2 mb-4">Staff Assignment & Checks</h5>
+                
+                <div class="row g-3 mb-4">
+                    <!-- Staff Checkbox list -->
+                    <div class="col-md-7">
+                        <label class="form-label fw-semibold text-muted small d-block">Assign Staff Members</label>
+                        <div class="border rounded-3 p-3 bg-light" style="max-height: 240px; overflow-y: auto;">
+                            {% for staff in staff_members %}
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" name="assigned_staff" value="{{ staff.id }}" id="staff_{{ staff.id }}"
+                                        {% if staff.id in assigned_staff_ids %}checked{% endif %}>
+                                    <label class="form-check-label text-dark fw-semibold" for="staff_{{ staff.id }}">
+                                        {{ staff.get_full_name|default:staff.username }}
+                                        <small class="text-muted d-block" style="font-size:0.75rem;">Dept: {{ staff.profile.department|default:'General' }}</small>
+                                    </label>
+                                </div>
+                            {% empty %}
+                                <span class="text-muted small">No staff directory records found. Create staff members first.</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold text-muted small d-block">Validation Checks</label>
+                        <div class="d-flex flex-column gap-3">
+                            <div class="form-check form-switch p-3 bg-light rounded-3 d-flex justify-content-between align-items-center border mb-0">
+                                <div class="ms-0">
+                                    <label class="form-check-label fw-semibold d-block" for="selfieSwitch">Require Selfie Photo</label>
+                                    <small class="text-muted small">Require camera proof during check-in.</small>
+                                </div>
+                                <input class="form-check-input ms-3 me-0" type="checkbox" name="require_selfie" id="selfieSwitch" style="transform: scale(1.2);" {% if job.require_selfie|default:True %}checked{% endif %}>
+                            </div>
+
+                            <div class="form-check form-switch p-3 bg-light rounded-3 d-flex justify-content-between align-items-center border mb-0">
+                                <div class="ms-0">
+                                    <label class="form-check-label fw-semibold d-block" for="checkoutSwitch">Require Check-out</label>
+                                    <small class="text-muted small">Require checkout event at end of shift.</small>
+                                </div>
+                                <input class="form-check-input ms-3 me-0" type="checkbox" name="require_checkout" id="checkoutSwitch" style="transform: scale(1.2);" {% if job.require_checkout|default:True %}checked{% endif %}>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <label class="form-label fw-semibold text-muted small">Shift Status</label>
+                            <select name="status" class="form-select rounded-3">
+                                <option value="UPCOMING" {% if job.status == 'UPCOMING' %}selected{% endif %}>Upcoming</option>
+                                <option value="CHECKED_IN" {% if job.status == 'CHECKED_IN' %}selected{% endif %}>Checked In</option>
+                                <option value="COMPLETED" {% if job.status == 'COMPLETED' %}selected{% endif %}>Completed</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Instructions Section -->
+                <h5 class="fw-bold text-dark border-bottom pb-2 mb-4 d-flex justify-content-between align-items-center">
+                    <span>📝 Shift Checklist / Instructions</span>
+                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="addInstructionRow()">+ Add Task</button>
+                </h5>
+                
+                <div class="mb-4" id="instructionsContainer">
+                    {% for inst in instructions %}
+                        <div class="input-group mb-2 instruction-row">
+                            <span class="input-group-text bg-light"><i class="bi bi-check-circle"></i></span>
+                            <input type="text" name="instructions" class="form-control" value="{{ inst }}" placeholder="e.g. Lock the rear warehouse doors at 10 PM.">
+                            <button type="button" class="btn btn-outline-danger" onclick="removeInstructionRow(this)"><i class="bi bi-trash"></i></button>
+                        </div>
+                    {% empty %}
+                        <div class="input-group mb-2 instruction-row">
+                            <span class="input-group-text bg-light"><i class="bi bi-check-circle"></i></span>
+                            <input type="text" name="instructions" class="form-control" placeholder="e.g. Ensure all windows are closed and security alarm is armed.">
+                            <button type="button" class="btn btn-outline-danger" onclick="removeInstructionRow(this)"><i class="bi bi-trash"></i></button>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="d-flex gap-3 justify-content-end mt-4 border-top pt-3">
+                    <a href="{% url 'job_list' %}" class="btn btn-light border rounded-3 px-4 py-2">Cancel</a>
+                    <button type="submit" class="btn btn-primary-gradient rounded-3 px-4 py-2">
+                        {% if form_type == 'update' %}Save Shift Changes{% else %}Create Job Assignment{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control:focus, .form-select:focus {
+        border-color: #6366f1 !important;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+    }
+    .fw-mono { font-family: monospace; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function addInstructionRow() {
+        var container = document.getElementById('instructionsContainer');
+        var newRow = document.createElement('div');
+        newRow.className = 'input-group mb-2 instruction-row animate-fade-in';
+        newRow.innerHTML = `
+            <span class="input-group-text bg-light"><i class="bi bi-check-circle"></i></span>
+            <input type="text" name="instructions" class="form-control" placeholder="e.g. Complete another task checklist.">
+            <button type="button" class="btn btn-outline-danger" onclick="removeInstructionRow(this)"><i class="bi bi-trash"></i></button>
+        `;
+        container.appendChild(newRow);
+    }
+    
+    function removeInstructionRow(button) {
+        var rows = document.querySelectorAll('.instruction-row');
+        if (rows.length > 1) {
+            button.closest('.instruction-row').remove();
+        } else {
+            // just clear the input if it's the last row
+            button.closest('.instruction-row').querySelector('input').value = '';
+        }
+    }
+
+    function detectAdminLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    document.getElementById('jobLat').value = position.coords.latitude.toFixed(6);
+                    document.getElementById('jobLng').value = position.coords.longitude.toFixed(6);
+                },
+                function(error) {
+                    alert("Error detecting location: " + error.message);
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            );
+        } else {
+            alert("Geolocation is not supported by this browser.");
+        }
+    }
+</script>
+{% endblock %}

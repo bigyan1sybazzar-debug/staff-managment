@@ -1,0 +1,361 @@
+{% extends 'base.html' %}
+
+{% block title %}History & Event Logs — StaffTracker{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-0">📜 Check-In History & Logs</h2>
+        <p class="text-muted mb-0">Monitor staff check-in times, GPS locations, selfies, and approve status requests.</p>
+    </div>
+    <div>
+        <button onclick="window.print()" class="btn btn-light border rounded-4 px-3">
+            <i class="bi bi-printer me-2"></i>Print Report
+        </button>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card p-3 mb-4">
+    <form method="GET" class="row g-3 align-items-center">
+        <div class="col-md-3">
+            <label class="form-label text-muted small fw-semibold">Staff Member</label>
+            <select name="user" class="form-select">
+                <option value="">All Staff</option>
+                {% for staff in staff_list %}
+                    <option value="{{ staff.id }}" {% if request.GET.user == staff.id|stringformat:"i" %}selected{% endif %}>
+                        {{ staff.get_full_name|default:staff.username }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label text-muted small fw-semibold">Job Site</label>
+            <select name="job" class="form-select">
+                <option value="">All Jobs</option>
+                {% for j in jobs_list %}
+                    <option value="{{ j.id }}" {% if request.GET.job == j.id|stringformat:"i" %}selected{% endif %}>
+                        [{{ j.code }}] {{ j.title }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label text-muted small fw-semibold">Check-In Status</label>
+            <select name="status" class="form-select">
+                <option value="">All Statuses</option>
+                <option value="PENDING_APPROVAL" {% if request.GET.status == 'PENDING_APPROVAL' %}selected{% endif %}>Pending Approval</option>
+                <option value="APPROVED" {% if request.GET.status == 'APPROVED' %}selected{% endif %}>Approved</option>
+                <option value="REJECTED" {% if request.GET.status == 'REJECTED' %}selected{% endif %}>Rejected</option>
+                <option value="COMPLETED" {% if request.GET.status == 'COMPLETED' %}selected{% endif %}>Completed</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label text-muted small fw-semibold">Date</label>
+            <input type="date" name="date" class="form-control" value="{{ request.GET.date|default:'' }}">
+        </div>
+        <div class="col-md-1 align-self-end">
+            <button type="submit" class="btn btn-dark w-100 rounded-3 py-2">Filter</button>
+        </div>
+    </form>
+</div>
+
+<!-- History Logs Table -->
+<div class="card p-3 mb-4">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Staff Name</th>
+                    <th>Site / Job</th>
+                    <th>Check-In (UTC)</th>
+                    <th>Check-Out (UTC)</th>
+                    <th>Duration</th>
+                    <th>Location Accuracy</th>
+                    <th>Geofence Check</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in checkins %}
+                    <tr>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ record.user.get_full_name|default:record.user.username }}</div>
+                            <small class="text-muted">{{ record.user.profile.department|default:"No Department" }}</small>
+                        </td>
+                        <td>
+                            <div class="fw-bold small text-indigo">[{{ record.job.code }}]</div>
+                            <div class="small text-muted">{{ record.job.site_name }}</div>
+                        </td>
+                        <td>
+                            <div>{{ record.timestamp|date:"M d, Y H:i" }}</div>
+                            <small class="text-muted"><i class="bi bi-clock"></i> Scheduled: {{ record.job.start_time|time:"H:i" }}</small>
+                        </td>
+                        <td>
+                            {% if record.check_out_timestamp %}
+                                <div>{{ record.check_out_timestamp|date:"M d, Y H:i" }}</div>
+                                <small class="text-muted"><i class="bi bi-clock"></i> Scheduled: {{ record.job.end_time|time:"H:i" }}</small>
+                            {% else %}
+                                <span class="text-muted small"><em>Still on site</em></span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if record.duration_minutes %}
+                                <span class="fw-bold">{{ record.duration_minutes }} mins</span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ record.accuracy|floatformat:1 }}m</td>
+                        <td>
+                            {% if record.is_inside_geofence %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2">Inside Geofence</span>
+                            {% else %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2">Outside Geofence</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge rounded-pill 
+                                {% if record.status == 'APPROVED' or record.status == 'COMPLETED' %}bg-success
+                                {% elif record.status == 'PENDING_APPROVAL' %}bg-warning text-dark
+                                {% else %}bg-danger{% endif %}">
+                                {{ record.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-light border rounded-pill px-3" onclick="viewLogDetails({{ record.id }})">
+                                <i class="bi bi-eye-fill me-1"></i> Review
+                            </button>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-5 text-muted">No check-in logs found matching your filters.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Check-In Details & Review Modal -->
+<div class="modal fade" id="reviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold" id="modalTitle">Review Check-In Activity</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-3">
+                <div id="modalLoading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                
+                <div id="modalBodyContent" class="d-none">
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-6 border-end">
+                            <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-person-fill me-2"></i>Staff & Job Details</h6>
+                            <table class="table table-borderless table-sm small">
+                                <tr>
+                                    <td class="text-muted" style="width: 120px;">Staff Member:</td>
+                                    <td class="fw-semibold" id="detStaffName"></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Job Title:</td>
+                                    <td id="detJobTitle"></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Work Site:</td>
+                                    <td id="detSiteName"></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Geofence Radius:</td>
+                                    <td id="detRadius"></td>
+                                </tr>
+                            </table>
+
+                            <h6 class="fw-bold mt-4 mb-3 text-success"><i class="bi bi-geo-alt-fill me-2"></i>GPS Validation</h6>
+                            <table class="table table-borderless table-sm small">
+                                <tr>
+                                    <td class="text-muted" style="width: 120px;">Location Accuracy:</td>
+                                    <td id="detAccuracy"></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Distance from Center:</td>
+                                    <td id="detDistance"></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Geofence Match:</td>
+                                    <td id="detGeofence"></td>
+                                </tr>
+                            </table>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6 class="fw-bold mb-3 text-warning"><i class="bi bi-camera-fill me-2"></i>Selfie Verification</h6>
+                            <div class="row g-2">
+                                <div class="col-6 text-center">
+                                    <div class="small fw-semibold text-muted mb-1">Check-In Selfie</div>
+                                    <div class="border rounded-3 p-1 bg-light">
+                                        <img id="imgCheckInSelfie" src="" class="img-fluid rounded-3" style="max-height: 160px; object-fit: cover; width: 100%; display: none;">
+                                        <div id="noCheckInSelfie" class="py-4 text-muted small">No photo available</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 text-center">
+                                    <div class="small fw-semibold text-muted mb-1">Check-Out Selfie</div>
+                                    <div class="border rounded-3 p-1 bg-light">
+                                        <img id="imgCheckOutSelfie" src="" class="img-fluid rounded-3" style="max-height: 160px; object-fit: cover; width: 100%; display: none;">
+                                        <div id="noCheckOutSelfie" class="py-4 text-muted small">No photo available</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4">
+                                <div class="small fw-semibold text-muted mb-1">Check-Out Notes</div>
+                                <div id="detCheckoutNotes" class="bg-light p-2 rounded border small text-muted min-vh-0" style="min-height: 48px;">
+                                    No notes provided.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Location Validation Map -->
+                    <div class="mb-4">
+                        <h6 class="fw-bold mb-2"><i class="bi bi-map me-2"></i>Location Map Pin</h6>
+                        <div id="detailMap" style="height: 200px; border-radius: 12px; border: 1px solid #ddd;"></div>
+                    </div>
+
+                    <!-- Status Change Form -->
+                    <form id="statusForm" method="POST" action="">
+                        {% csrf_token %}
+                        <input type="hidden" name="record_id" id="formRecordId">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold text-muted small">System Status Action</label>
+                            <select class="form-select" name="new_status" id="formNewStatus">
+                                <option value="PENDING_APPROVAL">Pending Approval</option>
+                                <option value="APPROVED">Approved</option>
+                                <option value="REJECTED">Rejected</option>
+                                <option value="COMPLETED">Completed</option>
+                                <option value="REUPLOAD_REQUESTED">Request Selfie Reupload</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold text-muted small">Status Notes / Reason</label>
+                            <textarea class="form-control" name="status_notes" id="formStatusNotes" rows="2" placeholder="Describe the reason for approval/rejection..."></textarea>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2 border-top pt-3">
+                            <button type="button" class="btn btn-light border rounded-3" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary-gradient rounded-3 px-4">Update Status</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-success-subtle { background-color: rgba(25, 135, 84, 0.1) !important; }
+    .bg-danger-subtle { background-color: rgba(220, 53, 69, 0.1) !important; }
+    .text-indigo { color: #6366f1; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    var detailMapObj = null;
+    var detailMarker = null;
+    var geofenceCircle = null;
+
+    function viewLogDetails(id) {
+        var modal = new bootstrap.Modal(document.getElementById('reviewModal'));
+        modal.show();
+        
+        document.getElementById('modalLoading').classList.remove('d-none');
+        document.getElementById('modalBodyContent').classList.add('d-none');
+        
+        // Fetch specific log record from API or construct manually
+        // We'll call a simple Django views endpoint that returns checkin json
+        fetch(`/history/?api=1&id=${id}`)
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('modalLoading').classList.add('d-none');
+                document.getElementById('modalBodyContent').classList.remove('d-none');
+
+                document.getElementById('detStaffName').innerText = data.user_name;
+                document.getElementById('detJobTitle').innerText = `[${data.job_code}] ${data.job_title}`;
+                document.getElementById('detSiteName').innerText = data.site_name;
+                document.getElementById('detRadius').innerText = `${data.geofence_radius} meters`;
+                document.getElementById('detAccuracy').innerText = `${data.accuracy} meters`;
+                document.getElementById('detDistance').innerText = `${data.distance_from_center} meters`;
+                document.getElementById('detGeofence').innerHTML = data.is_inside_geofence ? 
+                    '<span class="badge bg-success">Inside</span>' : 
+                    '<span class="badge bg-danger">Outside</span>';
+                
+                // Set Selfie images
+                if (data.selfie_url) {
+                    document.getElementById('imgCheckInSelfie').src = data.selfie_url;
+                    document.getElementById('imgCheckInSelfie').style.display = 'block';
+                    document.getElementById('noCheckInSelfie').style.display = 'none';
+                } else {
+                    document.getElementById('imgCheckInSelfie').style.display = 'none';
+                    document.getElementById('noCheckInSelfie').style.display = 'block';
+                }
+
+                if (data.checkout_selfie_url) {
+                    document.getElementById('imgCheckOutSelfie').src = data.checkout_selfie_url;
+                    document.getElementById('imgCheckOutSelfie').style.display = 'block';
+                    document.getElementById('noCheckOutSelfie').style.display = 'none';
+                } else {
+                    document.getElementById('imgCheckOutSelfie').style.display = 'none';
+                    document.getElementById('noCheckOutSelfie').style.display = 'block';
+                }
+
+                document.getElementById('detCheckoutNotes').innerText = data.checkout_notes || 'No notes provided.';
+                
+                // Form setup
+                document.getElementById('formRecordId').value = data.id;
+                document.getElementById('formNewStatus').value = data.status;
+                document.getElementById('formStatusNotes').value = data.status_notes || '';
+                document.getElementById('statusForm').action = `/history/?action=update_status&id=${data.id}`;
+
+                // Leaflet Map logic
+                setTimeout(function() {
+                    if (detailMapObj === null) {
+                        detailMapObj = L.map('detailMap').setView([data.check_in_lat, data.check_in_lng], 15);
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            attribution: '&copy; OpenStreetMap contributors'
+                        }).addTo(detailMapObj);
+                    } else {
+                        detailMapObj.setView([data.check_in_lat, data.check_in_lng], 15);
+                    }
+                    
+                    if (detailMarker) detailMapObj.removeLayer(detailMarker);
+                    if (geofenceCircle) detailMapObj.removeLayer(geofenceCircle);
+
+                    detailMarker = L.marker([data.check_in_lat, data.check_in_lng]).addTo(detailMapObj);
+                    detailMarker.bindPopup(`<strong>${data.user_name} Check-In</strong>`).openPopup();
+
+                    // Geofence Circle
+                    geofenceCircle = L.circle([data.site_lat, data.site_lng], {
+                        color: data.is_inside_geofence ? 'green' : 'red',
+                        fillColor: data.is_inside_geofence ? '#2ecc71' : '#e74c3c',
+                        fillOpacity: 0.15,
+                        radius: data.geofence_radius
+                    }).addTo(detailMapObj);
+
+                    detailMapObj.invalidateSize();
+                }, 200);
+            })
+            .catch(err => {
+                alert("Error loading check-in details.");
+                console.error(err);
+            });
+    }
+</script>
+{% endblock %}

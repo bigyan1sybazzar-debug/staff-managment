@@ -1,0 +1,305 @@
+{% extends 'base.html' %}
+
+{% block title %}Live Tracking Map — StaffTracker{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Full height map layout */
+    .map-container-wrapper {
+        position: relative;
+        height: calc(100vh - 170px);
+        margin: -1.5rem;
+        display: flex;
+        border-radius: 0;
+        overflow: hidden;
+    }
+    
+    #liveTrackingMap {
+        flex-grow: 1;
+        height: 100%;
+        z-index: 10;
+    }
+    
+    .map-overlay-sidebar {
+        width: 320px;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-right: 1px solid #e2e8f0;
+        z-index: 20;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        transition: all 0.3s;
+    }
+    
+    .sidebar-header {
+        padding: 1.25rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    
+    .staff-list-scroll {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding: 0.75rem;
+    }
+    
+    .staff-map-card {
+        padding: 0.85rem;
+        border-radius: 12px;
+        background: #ffffff;
+        border: 1px solid #f1f5f9;
+        margin-bottom: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .staff-map-card:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        transform: translateY(-1px);
+    }
+    
+    .staff-map-card.active-pin {
+        background: rgba(99, 102, 241, 0.08);
+        border-color: #6366f1;
+    }
+    
+    .legend-box {
+        position: absolute;
+        bottom: 2rem;
+        right: 2rem;
+        background: white;
+        padding: 1rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        z-index: 30;
+        font-size: 0.85rem;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .legend-color {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+    }
+    
+    .legend-site {
+        border-radius: 2px;
+        width: 14px;
+        height: 14px;
+        background: #3182ce;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="map-container-wrapper">
+    <!-- Map Sidebar -->
+    <div class="map-overlay-sidebar">
+        <div class="sidebar-header">
+            <h5 class="fw-bold mb-1"><i class="bi bi-people-fill text-indigo me-2"></i>Active Staff</h5>
+            <p class="text-muted small mb-3">Currently active check-ins on sites.</p>
+            
+            <div class="input-group">
+                <span class="input-group-text bg-light border-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" id="mapStaffSearch" class="form-control bg-light border-0" placeholder="Filter active staff...">
+            </div>
+        </div>
+        
+        <div class="staff-list-scroll" id="activeStaffList">
+            <div class="text-center py-5 text-muted" id="sidebarLoading">
+                <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
+                <div>Fetching active staff...</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Leaflet Map -->
+    <div id="liveTrackingMap"></div>
+    
+    <!-- Map Legend -->
+    <div class="legend-box">
+        <h6 class="fw-bold mb-2">Map Legend</h6>
+        <div class="legend-item">
+            <div class="legend-color" style="background: green;"></div>
+            <span>Inside Geofence</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: red;"></div>
+            <span>Outside Geofence</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-site"></div>
+            <span>Job Site Center</span>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Initialize Map
+        var map = L.map('liveTrackingMap').setView([27.7172, 85.3240], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        var markersMap = {};
+        var circleGeofences = {};
+        var staffData = [];
+
+        // Fetch location data from API
+        function loadLocations() {
+            fetch("{% url 'staff_locations_api' %}")
+                .then(res => res.json())
+                .then(data => {
+                    staffData = data.locations;
+                    renderStaffList(staffData);
+                    plotMarkersOnMap(staffData);
+                })
+                .catch(err => {
+                    console.error("Error loading map locations:", err);
+                    document.getElementById('sidebarLoading').innerHTML = '<div class="text-danger">Failed to load data</div>';
+                });
+        }
+
+        // Render Sidebar List
+        function renderStaffList(locations) {
+            var listEl = document.getElementById('activeStaffList');
+            listEl.innerHTML = '';
+            
+            if (locations.length === 0) {
+                listEl.innerHTML = '<div class="text-center text-muted py-5 small">No active check-ins on map.</div>';
+                return;
+            }
+
+            locations.forEach(loc => {
+                var card = document.createElement('div');
+                card.className = `staff-map-card`;
+                card.id = `staff-card-${loc.id}`;
+                card.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="fw-bold text-dark">${loc.name}</div>
+                            <small class="text-muted"><i class="bi bi-briefcase me-1"></i>Site: ${loc.site_name}</small>
+                        </div>
+                        <span class="badge rounded-pill ${loc.is_inside_geofence ? 'bg-success' : 'bg-danger'}">
+                            ${loc.is_inside_geofence ? 'Inside' : 'Outside'}
+                        </span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-2 small border-top pt-2">
+                        <span class="text-muted"><i class="bi bi-geo-alt me-1"></i>Dist: ${loc.distance_from_center.toFixed(1)}m</span>
+                        <span class="text-indigo fw-semibold">Click to locate</span>
+                    </div>
+                `;
+                
+                card.addEventListener('click', function() {
+                    document.querySelectorAll('.staff-map-card').forEach(c => c.classList.remove('active-pin'));
+                    card.classList.add('active-pin');
+                    
+                    if (loc.lat && loc.lng) {
+                        map.setView([loc.lat, loc.lng], 16);
+                        markersMap[loc.id].openPopup();
+                    }
+                });
+                
+                listEl.appendChild(card);
+            });
+        }
+
+        // Plot pins and geofence circles
+        function plotMarkersOnMap(locations) {
+            // Clear existing
+            for (var key in markersMap) map.removeLayer(markersMap[key]);
+            for (var key in circleGeofences) map.removeLayer(circleGeofences[key]);
+            markersMap = {};
+            circleGeofences = {};
+
+            var markersGroup = L.featureGroup();
+
+            locations.forEach(loc => {
+                if (loc.lat && loc.lng) {
+                    var color = loc.is_inside_geofence ? 'green' : 'red';
+                    
+                    // Staff Marker
+                    var marker = L.circleMarker([loc.lat, loc.lng], {
+                        radius: 9,
+                        fillColor: color,
+                        color: '#ffffff',
+                        weight: 2.5,
+                        opacity: 1,
+                        fillOpacity: 0.85
+                    }).addTo(map);
+                    
+                    marker.bindPopup(`
+                        <div class="p-1">
+                            <strong class="fs-6 d-block">${loc.name}</strong>
+                            <small class="text-muted d-block mb-1">${loc.department || ''}</small>
+                            <hr class="my-1">
+                            <table class="table table-borderless table-sm mb-0 style="font-size:0.8rem;">
+                                <tr><td>Site:</td><td class="fw-semibold">${loc.site_name}</td></tr>
+                                <tr><td>Accuracy:</td><td>${loc.accuracy.toFixed(1)}m</td></tr>
+                                <tr><td>Distance:</td><td>${loc.distance_from_center.toFixed(1)}m</td></tr>
+                                <tr><td>Geofence:</td><td><span class="badge ${loc.is_inside_geofence ? 'bg-success' : 'bg-danger'}">${loc.is_inside_geofence ? 'Inside' : 'Outside'}</span></td></tr>
+                            </table>
+                        </div>
+                    `);
+                    
+                    markersMap[loc.id] = marker;
+                    markersGroup.addLayer(marker);
+
+                    // Plot Site Center & Geofence Circle
+                    if (loc.site_lat && loc.site_lng) {
+                        // Geofence boundary
+                        var circle = L.circle([loc.site_lat, loc.site_lng], {
+                            color: color,
+                            fillColor: color,
+                            fillOpacity: 0.1,
+                            radius: loc.geofence_radius
+                        }).addTo(map);
+                        
+                        circleGeofences[loc.id] = circle;
+                        markersGroup.addLayer(circle);
+
+                        // Site Pin (Blue marker)
+                        var siteMarker = L.marker([loc.site_lat, loc.site_lng], {
+                            icon: L.divIcon({
+                                className: 'custom-div-icon',
+                                html: "<div style='background-color:#3182ce;width:12px;height:12px;border:2px solid white;border-radius:50%;box-shadow:0 0 4px rgba(0,0,0,0.5);'></div>",
+                                iconSize: [12, 12],
+                                iconAnchor: [6, 6]
+                            })
+                        }).addTo(map);
+                        siteMarker.bindPopup(`<strong>Work Site: ${loc.site_name}</strong><br>Radius: ${loc.geofence_radius}m`);
+                        markersGroup.addLayer(siteMarker);
+                    }
+                }
+            });
+
+            if (locations.length > 0) {
+                map.fitBounds(markersGroup.getBounds(), { padding: [40, 40] });
+            }
+        }
+
+        // Search Filter
+        document.getElementById('mapStaffSearch').addEventListener('input', function(e) {
+            var val = e.target.value.toLowerCase();
+            var filtered = staffData.filter(loc => 
+                loc.name.toLowerCase().includes(val) || 
+                loc.site_name.toLowerCase().includes(val)
+            );
+            renderStaffList(filtered);
+        });
+
+        // Initialize loading
+        loadLocations();
+    });
+</script>
+{% endblock %}

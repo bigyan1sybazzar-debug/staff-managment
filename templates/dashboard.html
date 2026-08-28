@@ -1,0 +1,268 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard — StaffTracker{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-0">🚀 Command Dashboard</h2>
+        <p class="text-muted mb-0">Overview of staff check-ins, job sites, and real-time geofence statuses.</p>
+    </div>
+    <div>
+        <span class="badge bg-light text-dark border p-2 fw-semibold">
+            <i class="bi bi-clock-history me-1 text-primary"></i> Live Server Time (UTC)
+        </span>
+    </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card card-hover h-100 p-3">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-semibold">Total Staff</span>
+                    <h3 class="fw-bold my-1">{{ total_staff_count }}</h3>
+                    <span class="text-success small"><i class="bi bi-arrow-up-right me-1"></i>Active Directory</span>
+                </div>
+                <div class="bg-indigo-light p-3 rounded-4 text-indigo">
+                    <i class="bi bi-people-fill fs-3"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card card-hover h-100 p-3">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-semibold">Active Jobs</span>
+                    <h3 class="fw-bold my-1">{{ active_jobs_count }}</h3>
+                    <span class="text-primary small"><i class="bi bi-calendar-event me-1"></i>Scheduled Today</span>
+                </div>
+                <div class="bg-primary-light p-3 rounded-4 text-primary">
+                    <i class="bi bi-briefcase-fill fs-3"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card card-hover h-100 p-3">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-semibold">Checked In</span>
+                    <h3 class="fw-bold my-1">{{ checked_in_count }}</h3>
+                    <span class="text-info small"><i class="bi bi-geo-alt-fill me-1"></i>On-Site Right Now</span>
+                </div>
+                <div class="bg-info-light p-3 rounded-4 text-info">
+                    <i class="bi bi-check-circle-fill fs-3"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card card-hover h-100 p-3">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-semibold">Pending Approvals</span>
+                    <h3 class="fw-bold my-1 text-warning">{{ pending_approvals_count }}</h3>
+                    <span class="text-warning small"><i class="bi bi-shield-fill-exclamation me-1"></i>Awaiting Review</span>
+                </div>
+                <div class="bg-warning-light p-3 rounded-4 text-warning">
+                    <i class="bi bi-hourglass-split fs-3"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Map Overview -->
+    <div class="col-lg-7">
+        <div class="card h-100 p-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0"><i class="bi bi-map-fill me-2 text-primary"></i>Live Staff Operations Map</h5>
+                <a href="{% url 'map_view' %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">View Full Map</a>
+            </div>
+            <div id="dashboardMap" style="height: 380px; border-radius: 12px; border: 1px solid #e2e8f0;"></div>
+        </div>
+    </div>
+
+    <!-- Quick Operations -->
+    <div class="col-lg-5">
+        <div class="card h-100 p-3">
+            <h5 class="fw-bold mb-3"><i class="bi bi-lightning-charge-fill me-2 text-warning"></i>Quick Actions</h5>
+            <div class="row g-3">
+                <div class="col-6">
+                    <a href="{% url 'staff_create' %}" class="btn btn-outline-dark w-100 py-3 rounded-4 d-flex flex-column align-items-center gap-2">
+                        <i class="bi bi-person-plus-fill fs-3 text-indigo"></i>
+                        <span class="fw-semibold small">Add New Staff</span>
+                    </a>
+                </div>
+                <div class="col-6">
+                    <a href="{% url 'job_create' %}" class="btn btn-outline-dark w-100 py-3 rounded-4 d-flex flex-column align-items-center gap-2">
+                        <i class="bi bi-plus-circle-fill fs-3 text-success"></i>
+                        <span class="fw-semibold small">Create New Job</span>
+                    </a>
+                </div>
+                <div class="col-6">
+                    <a href="{% url 'map_view' %}" class="btn btn-outline-dark w-100 py-3 rounded-4 d-flex flex-column align-items-center gap-2">
+                        <i class="bi bi-geo-fill fs-3 text-danger"></i>
+                        <span class="fw-semibold small">Live Tracking</span>
+                    </a>
+                </div>
+                <div class="col-6">
+                    <a href="/admin/staff_app/systemsettings/1/change/" class="btn btn-outline-dark w-100 py-3 rounded-4 d-flex flex-column align-items-center gap-2">
+                        <i class="bi bi-sliders fs-3 text-primary"></i>
+                        <span class="fw-semibold small">System Settings</span>
+                    </a>
+                </div>
+            </div>
+            
+            <hr class="my-4 text-muted">
+            
+            <h6 class="fw-bold mb-2">Today's Jobs Summary</h6>
+            {% if active_jobs %}
+                <div class="list-group list-group-flush">
+                    {% for job in active_jobs %}
+                        <div class="list-group-item px-0 py-2 border-0 d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="fw-semibold text-dark">{{ job.title }}</div>
+                                <small class="text-muted"><i class="bi bi-geo-alt me-1"></i>{{ job.site_name }}</small>
+                            </div>
+                            <span class="badge rounded-pill {% if job.status == 'COMPLETED' %}bg-success{% elif job.status == 'CHECKED_IN' %}bg-info{% else %}bg-secondary{% endif %}">
+                                {{ job.status }}
+                            </span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-muted small">No jobs scheduled for today.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Recent Check-Ins -->
+<div class="card p-3 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold mb-0"><i class="bi bi-journal-check me-2 text-success"></i>Recent Check-In Activity</h5>
+        <a href="{% url 'history' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">View Log History</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Staff Member</th>
+                    <th>Job Code</th>
+                    <th>Site Name</th>
+                    <th>Check-in Time</th>
+                    <th>GPS Accuracy</th>
+                    <th>Geofence Status</th>
+                    <th>Status</th>
+                    <th class="text-center">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in recent_checkins %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="avatar-sm bg-light text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px;">
+                                    {{ record.user.username|slice:":2"|upper }}
+                                </div>
+                                <div>
+                                    <div class="fw-semibold">{{ record.user.get_full_name|default:record.user.username }}</div>
+                                    <small class="text-muted">{{ record.user.email }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="fw-mono text-indigo">{{ record.job.code }}</span></td>
+                        <td>{{ record.job.site_name }}</td>
+                        <td>{{ record.timestamp|date:"M d, Y H:i" }}</td>
+                        <td>{{ record.accuracy|floatformat:1 }}m</td>
+                        <td>
+                            {% if record.is_inside_geofence %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2">Inside Geofence</span>
+                            {% else %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2">Outside Geofence ({{ record.distance_from_center|floatformat:1 }}m)</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge rounded-pill 
+                                {% if record.status == 'APPROVED' or record.status == 'COMPLETED' %}bg-success
+                                {% elif record.status == 'PENDING_APPROVAL' %}bg-warning text-dark
+                                {% else %}bg-danger{% endif %}">
+                                {{ record.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <a href="{% url 'history' %}" class="btn btn-sm btn-light border rounded-pill">
+                                <i class="bi bi-eye"></i> View Details
+                            </a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted">No recent check-in activities found.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .bg-indigo-light { background-color: rgba(99, 102, 241, 0.1); }
+    .text-indigo { color: #6366f1; }
+    .bg-primary-light { background-color: rgba(13, 110, 253, 0.1); }
+    .bg-info-light { background-color: rgba(13, 202, 240, 0.1); }
+    .bg-warning-light { background-color: rgba(255, 193, 7, 0.1); }
+    .fw-mono { font-family: monospace; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Initialize Dashboard Map
+        var map = L.map('dashboardMap').setView([27.7172, 85.3240], 12); // Default to Kathmandu coordinates, can adjust
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Fetch staff locations and add markers
+        fetch("{% url 'staff_locations_api' %}")
+            .then(response => response.json())
+            .then(data => {
+                var markersGroup = L.featureGroup();
+                data.locations.forEach(loc => {
+                    if (loc.lat && loc.lng) {
+                        var color = loc.is_inside_geofence ? 'green' : 'red';
+                        // Custom colored marker
+                        var marker = L.circleMarker([loc.lat, loc.lng], {
+                            radius: 8,
+                            fillColor: color,
+                            color: '#fff',
+                            weight: 2,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        }).addTo(map);
+                        
+                        marker.bindPopup(`
+                            <strong>${loc.name}</strong><br>
+                            Site: ${loc.site_name}<br>
+                            Status: ${loc.status}<br>
+                            Geofence: ${loc.is_inside_geofence ? 'Inside' : 'Outside'}
+                        `);
+                        markersGroup.addLayer(marker);
+                    }
+                });
+                
+                if (data.locations.length > 0) {
+                    map.fitBounds(markersGroup.getBounds(), { padding: [30, 30] });
+                }
+            })
+            .catch(err => console.error("Error loading map data:", err));
+    });
+</script>
+{% endblock %}
