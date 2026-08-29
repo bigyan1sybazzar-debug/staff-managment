@@ -147,6 +147,27 @@
             font-size:14px; font-weight:600; color:#6b7280; background:#fff; cursor:pointer; margin-top:8px; }
 
         .empty-state { text-align:center; padding:48px 24px; color:#9ca3af; }
+
+        /* Responsive Improvements */
+        @media (max-width: 600px) {
+            .gps-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+            .gps-bar { font-size: 11px; padding: 6px 12px; }
+            .gps-bar span:nth-of-type(4) { display: none; } /* Hide email to save space on mobile */
+            .staff-nav { padding: 8px 12px; gap: 4px; }
+            .staff-nav .brand { font-size: 16px; }
+            .nav-tab { padding: 5px 10px; font-size: 12px; }
+            .btn-signout { padding: 4px 8px; font-size: 11px; }
+            .job-card { padding: 14px 16px; }
+            .job-title { font-size: 16px; }
+            .job-time { gap: 8px; font-size: 11px; }
+            .job-actions { flex-direction: column; }
+            .job-actions button { width: 100%; text-align: center; justify-content: center; }
+            .btn-view, .btn-checkin, .btn-checkout, .btn-outrange { padding: 10px 14px; font-size: 13px; }
+            .check-modal { padding: 16px; }
+        }
+        @media (max-width: 400px) {
+            .staff-nav .brand { display: none; } /* Hide brand text on extremely narrow screens to avoid wrapping */
+        }
     </style>
 </head>
 <body>
@@ -213,16 +234,24 @@
             <div class="job-card-top">
                 <div class="job-badges">
                     <span class="jbadge jbadge-code">{{ job.code }}</span>
-                    {% if job.active_checkin %}
+                    {% if job.completed_checkin %}
+                        {% if job.completed_checkin.status == 'PENDING_APPROVAL' %}
+                            <span class="jbadge jbadge-pending">⏳ Awaiting Review</span>
+                        {% else %}
+                            <span class="jbadge jbadge-active" style="background:#d1fae5; color:#065f46; border-color:#a7f3d0;">✅ Completed</span>
+                        {% endif %}
+                    {% elif job.active_checkin %}
                         <span class="jbadge jbadge-active">Checked In</span>
                     {% else %}
                         <span class="jbadge jbadge-upcoming">Upcoming Job</span>
                     {% endif %}
-                    {% if job.require_selfie %}<span class="jbadge jbadge-selfie"><i class="bi bi-camera me-1"></i>Selfie Required</span>{% endif %}
+                    {% if job.require_selfie %}<span class="jbadge jbadge-selfie"><i class="bi bi-camera me-1"></i>Selfie</span>{% endif %}
                 </div>
-                <div class="zone-badge zone-loading" id="zone-{{ job.pk }}">
-                    <span class="zone-dot zone-dot-out"></span>Checking...
-                </div>
+                {% if not job.completed_checkin %}
+                    <div class="zone-badge zone-loading" id="zone-{{ job.pk }}">
+                        <span class="zone-dot zone-dot-out"></span>Checking...
+                    </div>
+                {% endif %}
             </div>
             <div class="job-title">{{ job.title }}</div>
             <div class="job-site"><i class="bi bi-geo-alt me-1" style="color:#ef4444;"></i><strong>{{ job.site_name }}</strong> &mdash; {{ job.address }}</div>
@@ -234,7 +263,17 @@
                 <button class="btn-view" onclick="viewJobDetail('{{ job.pk }}','{{ job.title }}','{{ job.site_name }}','{{ job.address }}','{{ job.start_time|time:"H:i" }}','{{ job.end_time|time:"H:i" }}','{{ job.geofence_radius }}')">
                     View Details <i class="bi bi-chevron-right"></i>
                 </button>
-                {% if job.active_checkin %}
+                {% if job.completed_checkin %}
+                    {% if job.completed_checkin.status == 'PENDING_APPROVAL' %}
+                        <button class="btn-view" disabled style="background:#fffbeb; color:#d97706; border:1px solid #fef08a; font-weight:600; cursor:default; padding: 7px 16px;">
+                            <i class="bi bi-hourglass-split me-1"></i> Awaiting Review
+                        </button>
+                    {% else %}
+                        <button class="btn-view" disabled style="background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; font-weight:600; cursor:default; padding: 7px 16px;">
+                            <i class="bi bi-check-circle-fill me-1"></i> Completed
+                        </button>
+                    {% endif %}
+                {% elif job.active_checkin %}
                     <button class="btn-checkout" id="btn-{{ job.pk }}"
                         onclick="openModal('out','{{ job.pk }}','{{ job.title }}','{{ job.lat }}','{{ job.lng }}','{{ job.geofence_radius }}','{{ job.active_checkin.pk }}')">
                         <i class="bi bi-box-arrow-right"></i> Check Out
@@ -255,16 +294,34 @@
             <div class="job-card-top">
                 <div class="job-badges">
                     <span class="jbadge jbadge-code">{{ job.code }}</span>
-                    {% if job.active_checkin %}
+                    {% if job.completed_checkin %}
+                        {% if job.completed_checkin.status == 'PENDING_APPROVAL' %}
+                            <span class="jbadge jbadge-pending">Awaiting Review</span>
+                        {% else %}
+                            <span class="jbadge jbadge-active" style="background:#d1fae5; color:#065f46; border-color:#a7f3d0;">Completed</span>
+                        {% endif %}
+                    {% elif job.active_checkin %}
                         <span class="jbadge jbadge-active">Checked In</span>
                     {% else %}
                         <span class="jbadge jbadge-upcoming">Upcoming Job</span>
                     {% endif %}
                     {% if job.require_selfie %}<span class="jbadge jbadge-selfie"><i class="bi bi-camera me-1"></i>Selfie Required</span>{% endif %}
                 </div>
-                <div class="zone-badge zone-loading" id="zone-{{ job.pk }}">
-                    <span class="zone-dot zone-dot-out"></span>Checking...
-                </div>
+                {% if job.completed_checkin %}
+                    {% if job.completed_checkin.status == 'PENDING_APPROVAL' %}
+                        <div class="zone-badge zone-out" style="background:#fffbeb; color:#854d0e; border-color:#fef08a;">
+                            <span class="zone-dot zone-dot-out" style="background:#f59e0b;"></span>Awaiting Review
+                        </div>
+                    {% else %}
+                        <div class="zone-badge zone-in" style="background:#d1fae5; color:#065f46; border-color:#a7f3d0;">
+                            <span class="zone-dot zone-dot-in" style="background:#10b981;"></span>Completed
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="zone-badge zone-loading" id="zone-{{ job.pk }}">
+                        <span class="zone-dot zone-dot-out"></span>Checking...
+                    </div>
+                {% endif %}
             </div>
             <div class="job-title">{{ job.title }}</div>
             <div class="job-site"><i class="bi bi-geo-alt me-1" style="color:#ef4444;"></i><strong>{{ job.site_name }}</strong> &mdash; {{ job.address }}</div>
@@ -277,7 +334,17 @@
                 <button class="btn-view" onclick="viewJobDetail('{{ job.pk }}','{{ job.title }}','{{ job.site_name }}','{{ job.address }}','{{ job.start_time|time:"H:i" }}','{{ job.end_time|time:"H:i" }}','{{ job.geofence_radius }}')">
                     View Details <i class="bi bi-chevron-right"></i>
                 </button>
-                {% if job.active_checkin %}
+                {% if job.completed_checkin %}
+                    {% if job.completed_checkin.status == 'PENDING_APPROVAL' %}
+                        <button class="btn-view" disabled style="background:#fffbeb; color:#f59e0b; border:1px solid #fcd34d; font-weight:700; cursor:default; padding: 7px 16px;">
+                            <i class="bi bi-hourglass-split me-1"></i> Pending Approval
+                        </button>
+                    {% else %}
+                        <button class="btn-view" disabled style="background:#f3f4f6; color:#10b981; border:1px solid #d1d5db; font-weight:700; cursor:default; padding: 7px 16px;">
+                            <i class="bi bi-check-circle-fill me-1"></i> Completed
+                        </button>
+                    {% endif %}
+                {% elif job.active_checkin %}
                     <button class="btn-checkout" id="btn-{{ job.pk }}"
                         onclick="openModal('out','{{ job.pk }}','{{ job.title }}','{{ job.lat }}','{{ job.lng }}','{{ job.geofence_radius }}','{{ job.active_checkin.pk }}')">
                         <i class="bi bi-box-arrow-right"></i> Check Out
@@ -304,12 +371,52 @@
 
     <!-- History Tab -->
     <div id="tab-history" style="display:none;">
-        <div class="section-header"><div class="section-title">Check-in History</div></div>
+        <div class="section-header">
+            <div class="section-title">History</div>
+            <div class="section-count">{{ my_checkins|length }} records</div>
+        </div>
+
+        {% for record in my_checkins %}
+        <div class="job-card" style="padding:14px 18px; margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                <div>
+                    <span class="jbadge jbadge-code" style="margin-bottom:6px; display:inline-block;">{{ record.job.code }}</span>
+                    <div style="font-size:16px; font-weight:700; color:#111827;">{{ record.job.title }}</div>
+                    <div style="font-size:12px; color:#6b7280; margin-top:2px;"><i class="bi bi-geo-alt me-1" style="color:#ef4444;"></i>{{ record.job.site_name }}</div>
+                </div>
+                <span class="jbadge {% if record.status == 'COMPLETED' or record.status == 'APPROVED' %}jbadge-active{% elif record.status == 'PENDING_APPROVAL' %}jbadge-pending{% else %}jbadge-upcoming{% endif %}" style="font-size:11px; white-space:nowrap;">
+                    {% if record.status == 'COMPLETED' %}✅ Completed
+                    {% elif record.status == 'APPROVED' %}✅ Approved
+                    {% elif record.status == 'PENDING_APPROVAL' %}⏳ Pending Review
+                    {% elif record.status == 'REJECTED' %}❌ Rejected
+                    {% else %}{{ record.get_status_display }}{% endif %}
+                </span>
+            </div>
+            <div style="display:flex; gap:14px; font-size:12px; color:#6b7280; flex-wrap:wrap;">
+                <span><i class="bi bi-box-arrow-in-right me-1" style="color:#10b981;"></i>In: {{ record.timestamp|date:"M d, H:i" }}</span>
+                {% if record.check_out_timestamp %}
+                    <span><i class="bi bi-box-arrow-right me-1" style="color:#ef4444;"></i>Out: {{ record.check_out_timestamp|date:"M d, H:i" }}</span>
+                    <span><i class="bi bi-clock me-1"></i>{{ record.duration_minutes }} min</span>
+                {% else %}
+                    <span style="color:#f59e0b;"><i class="bi bi-clock me-1"></i>Still on site</span>
+                {% endif %}
+                <span><i class="bi bi-geo-alt me-1"></i>±{{ record.accuracy|floatformat:0 }}m accuracy</span>
+                {% if record.is_inside_geofence %}
+                    <span style="color:#10b981;"><i class="bi bi-check-circle me-1"></i>Inside Geofence</span>
+                {% else %}
+                    <span style="color:#ef4444;"><i class="bi bi-exclamation-circle me-1"></i>Outside Geofence</span>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
         <div class="empty-state">
             <i class="bi bi-clock-history" style="font-size:48px; display:block; margin-bottom:12px;"></i>
-            <div style="font-size:16px; font-weight:600; color:#374151;">History coming soon</div>
+            <div style="font-size:16px; font-weight:600; color:#374151;">No check-in records yet</div>
+            <div style="font-size:13px; margin-top:4px; color:#9ca3af;">Your check-in and check-out history will appear here.</div>
         </div>
+        {% endfor %}
     </div>
+
 
     <!-- Profile Tab -->
     <div id="tab-profile" style="display:none;">
@@ -603,21 +710,22 @@
         if (!confirmBtn.classList.contains('d-none')) { confirmBtn.disabled=true; confirmBtn.textContent='Submitting...'; }
 
         fetch(url, {method:'POST', body:fd}).then(function(res){
-            // Always try to parse JSON first (both success and error responses return JSON)
             return res.json().then(function(data){
                 if (data.ok) {
                     closeModal();
-                    swapToCheckOut(_jobPk, data.record_pk);
+                    if (_mode==='in') {
+                        swapToCheckOut(_jobPk, data.record_pk);
+                    } else {
+                        swapToCompleted(_jobPk);
+                    }
                 } else {
-                    // Show the server error message
-                    alert('Check-in failed: '+(data.error||'Unknown error'));
+                    alert((_mode==='in'?'Check-in':'Check-out')+' failed: '+(data.error||'Unknown error'));
                     var cpBtn=document.getElementById('capturePicBtn');
-                    if (cpBtn) { cpBtn.disabled=false; cpBtn.innerHTML='<i class="bi bi-camera-fill me-2"></i><span id="captureLabel">Take Selfie & Check In</span>'; }
+                    if (cpBtn) { cpBtn.disabled=false; cpBtn.innerHTML='<i class="bi bi-camera-fill me-2"></i><span id="captureLabel">Take Selfie & '+(_mode==='in'?'Check In':'Check Out')+'</span>'; }
                     document.getElementById('retakePicBtn').style.display='';
                     if (!confirmBtn.classList.contains('d-none')) { confirmBtn.disabled=false; confirmBtn.textContent=_mode==='in'?'Confirm Check In':'Confirm Check Out'; }
                 }
             }).catch(function(){
-                // Non-JSON response (e.g. Django login redirect) — reload page
                 window.location.href='/my-dashboard/';
             });
         }).catch(function(e){
@@ -629,19 +737,46 @@
     }
 
 
+    // Called after successful check-IN — swap card to show Check Out button
     function swapToCheckOut(jobPk, recordPk) {
         var zone=document.getElementById('zone-'+jobPk);
         if (zone) { zone.className='zone-badge zone-in'; zone.innerHTML='<span class="zone-dot zone-dot-in"></span>Checked In'; }
         var btn=document.getElementById('btn-'+jobPk);
         if (btn) {
-            var title=btn.dataset.title||'';
+            var title=btn.dataset.title||_jobTitle||'';
             btn.className='btn-checkout';
             btn.innerHTML='<i class="bi bi-box-arrow-right"></i> Check Out';
             btn.removeAttribute('data-lat');
             btn.onclick=(function(rp,t){ return function(){ openModal('out',jobPk,t,_jlat,_jlng,_jRadius,rp,false); }; })(recordPk, title);
         }
         var card=document.getElementById('card-'+jobPk);
-        if (card) { var u=card.querySelector('.jbadge-upcoming'); if(u){u.className='jbadge jbadge-active'; u.textContent='Checked In';} }
+        if (card) {
+            var u=card.querySelector('.jbadge-upcoming');
+            if(u){u.className='jbadge jbadge-active'; u.textContent='Checked In';}
+        }
+    }
+
+    // Called after successful check-OUT — swap card to show Pending Approval
+    function swapToCompleted(jobPk) {
+        var zone=document.getElementById('zone-'+jobPk);
+        if (zone) {
+            zone.className='zone-badge zone-out';
+            zone.style.cssText='background:#fffbeb; color:#854d0e; border-color:#fef08a;';
+            zone.innerHTML='<span class="zone-dot zone-dot-out" style="background:#f59e0b;"></span>Awaiting Review';
+        }
+        var btn=document.getElementById('btn-'+jobPk);
+        if (btn) {
+            btn.className='btn-view';
+            btn.disabled=true;
+            btn.style.cssText='background:#fffbeb; color:#f59e0b; border:1px solid #fcd34d; font-weight:700; cursor:default; padding:7px 16px;';
+            btn.innerHTML='<i class="bi bi-hourglass-split me-1"></i> Pending Approval';
+            btn.onclick=null;
+        }
+        var card=document.getElementById('card-'+jobPk);
+        if (card) {
+            var badges=card.querySelectorAll('.jbadge-active, .jbadge-upcoming');
+            badges.forEach(function(b){ b.className='jbadge jbadge-pending'; b.textContent='Awaiting Review'; });
+        }
     }
 
     function viewJobDetail(pk,title,site,addr,start,end,radius) {

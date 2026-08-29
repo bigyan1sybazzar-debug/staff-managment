@@ -106,16 +106,23 @@ def staff_dashboard_view(request):
     today_jobs    = all_assigned.filter(date=today).order_by('start_time')
     upcoming_jobs = all_assigned.filter(date__gt=today).order_by('date', 'start_time')
 
-    # Map job_id -> active CheckInRecord (checked-in but not yet checked-out)
+    # Map job_id to active and completed check-in records
+    user_checkins = CheckInRecord.objects.filter(user=user)
     active_checkins = {}
-    for ci in CheckInRecord.objects.filter(user=user, check_out_timestamp__isnull=True):
-        active_checkins[ci.job_id] = ci
+    completed_checkins = {}
 
-    # Attach active check-in info to each job
+    for ci in user_checkins:
+        if ci.check_out_timestamp is None:
+            active_checkins[ci.job_id] = ci
+        else:
+            completed_checkins[ci.job_id] = ci
+
+    # Attach active/completed check-in info to each job
     def annotate(queryset):
         jobs = list(queryset)
         for job in jobs:
             job.active_checkin = active_checkins.get(job.pk)
+            job.completed_checkin = completed_checkins.get(job.pk)
         return jobs
 
     context = {
@@ -123,8 +130,10 @@ def staff_dashboard_view(request):
         'today_jobs':     annotate(today_jobs),
         'upcoming_jobs':  annotate(upcoming_jobs),
         'total_assigned': all_assigned.count(),
+        'my_checkins':    CheckInRecord.objects.filter(user=user).order_by('-timestamp').select_related('job')[:30],
     }
     return render(request, 'staff_dashboard.html', context)
+
 
 
 # ==========================
@@ -171,36 +180,33 @@ def checkin_view(request, job_pk):
 # ==========================
 @login_required
 def checkout_view(request, record_pk):
-    record = get_object_or_404(CheckInRecord, pk=record_pk, user=request.user)
-    if request.method == 'POST':
-        try:
-            print("--- CHECK-OUT POST ---")
-            print("POST data:", request.POST)
-            print("FILES data:", request.FILES)
+    if request.method != 'POST':
+        return redirect('staff_dashboard')
+    try:
+        record = CheckInRecord.objects.get(pk=record_pk, user=request.user)
+    except CheckInRecord.DoesNotExist:
+        return JsonResponse({'ok': False, 'error': f'Record #{record_pk} not found'}, status=404)
+    try:
+        lat      = float(request.POST.get('lat', 0))
+        lng      = float(request.POST.get('lng', 0))
+        accuracy = float(request.POST.get('accuracy', 0))
+        selfie   = request.FILES.get('selfie')
 
-            lat      = float(request.POST.get('lat', 0))
-            lng      = float(request.POST.get('lng', 0))
-            accuracy = float(request.POST.get('accuracy', 0))
-            selfie   = request.FILES.get('selfie')
+        now      = timezone.now()
+        duration = int((now - record.timestamp).total_seconds() / 60)
 
-            now      = timezone.now()
-            duration = int((now - record.timestamp).total_seconds() / 60)
-
-            record.check_out_timestamp = now
-            record.check_out_lat       = lat
-            record.check_out_lng       = lng
-            record.check_out_accuracy  = accuracy
-            record.duration_minutes    = duration
-            if selfie:
-                record.check_out_selfie = selfie
-            record.status = 'COMPLETED'
-            record.save()
-            print("Updated check-out record ID:", record.id, "Checkout selfie:", record.check_out_selfie)
-            messages.success(request, f"Checked out from '{record.job.title}'! Duration: {duration} min.")
-        except Exception as e:
-            print("Check-out error:", str(e))
-            messages.error(request, f"Check-out failed: {e}")
-    return redirect('staff_dashboard')
+        record.check_out_timestamp = now
+        record.check_out_lat       = lat
+        record.check_out_lng       = lng
+        record.check_out_accuracy  = accuracy
+        record.duration_minutes    = duration
+        if selfie:
+            record.check_out_selfie = selfie
+        record.status = 'PENDING_APPROVAL'
+        record.save()
+        return JsonResponse({'ok': True, 'record_pk': record.pk, 'job_pk': record.job_id, 'duration': duration})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'error': str(e)}, status=400)
 
 
 # ==========================

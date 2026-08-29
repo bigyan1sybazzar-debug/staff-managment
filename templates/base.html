@@ -397,13 +397,13 @@
             </div>
             
             <div class="navbar-actions">
-                <div class="action-btn">
+                <a href="{% url 'history' %}?status=PENDING_APPROVAL" class="action-btn" title="Pending Approvals">
                     <i class="bi bi-bell-fill"></i>
                     <span class="notification-dot"></span>
-                </div>
-                <div class="action-btn">
+                </a>
+                <a href="/admin/" class="action-btn" title="Django Admin Panel">
                     <i class="bi bi-gear-fill"></i>
-                </div>
+                </a>
             </div>
         </div>
         {% endif %}
