@@ -3,7 +3,7 @@
 {% block title %}History & Event Logs — StaffTracker{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4 header-row">
     <div>
         <h2 class="fw-bold mb-0">📜 Check-In History & Logs</h2>
         <p class="text-muted mb-0">Monitor staff check-in times, GPS locations, selfies, and approve status requests.</p>
@@ -18,7 +18,7 @@
 <!-- Filters -->
 <div class="card p-3 mb-4">
     <form method="GET" class="row g-3 align-items-center">
-        <div class="col-md-3">
+        <div class="col-6 col-md-3">
             <label class="form-label text-muted small fw-semibold">Staff Member</label>
             <select name="user" class="form-select">
                 <option value="">All Staff</option>
@@ -29,7 +29,7 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-6 col-md-3">
             <label class="form-label text-muted small fw-semibold">Job Site</label>
             <select name="job" class="form-select">
                 <option value="">All Jobs</option>
@@ -40,7 +40,7 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-6 col-md-3">
             <label class="form-label text-muted small fw-semibold">Check-In Status</label>
             <select name="status" class="form-select">
                 <option value="">All Statuses</option>
@@ -50,11 +50,11 @@
                 <option value="COMPLETED" {% if request.GET.status == 'COMPLETED' %}selected{% endif %}>Completed</option>
             </select>
         </div>
-        <div class="col-md-2">
+        <div class="col-6 col-md-2">
             <label class="form-label text-muted small fw-semibold">Date</label>
             <input type="date" name="date" class="form-control" value="{{ request.GET.date|default:'' }}">
         </div>
-        <div class="col-md-1 align-self-end">
+        <div class="col-12 col-md-1 align-self-end">
             <button type="submit" class="btn btn-dark w-100 rounded-3 py-2">Filter</button>
         </div>
     </form>
@@ -62,7 +62,7 @@
 
 <!-- History Logs Table -->
 <div class="card p-3 mb-4">
-    <div class="table-responsive">
+    <div class="table-responsive history-table-wrap">
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
                 <tr>
@@ -91,11 +91,17 @@
                         <td>
                             <div>{{ record.timestamp|date:"M d, Y H:i" }}</div>
                             <small class="text-muted"><i class="bi bi-clock"></i> Scheduled: {{ record.job.start_time|time:"H:i" }}</small>
+                            {% if record.selfie_captured_at %}
+                                <br><small class="text-gold"><i class="bi bi-camera"></i> Selfie: {{ record.selfie_captured_at|date:"H:i:s" }}</small>
+                            {% endif %}
                         </td>
                         <td>
                             {% if record.check_out_timestamp %}
                                 <div>{{ record.check_out_timestamp|date:"M d, Y H:i" }}</div>
                                 <small class="text-muted"><i class="bi bi-clock"></i> Scheduled: {{ record.job.end_time|time:"H:i" }}</small>
+                                {% if record.checkout_selfie_captured_at %}
+                                    <br><small class="text-gold"><i class="bi bi-camera"></i> Selfie: {{ record.checkout_selfie_captured_at|date:"H:i:s" }}</small>
+                                {% endif %}
                             {% else %}
                                 <span class="text-muted small"><em>Still on site</em></span>
                             {% endif %}
@@ -122,6 +128,9 @@
                                 {% else %}bg-danger{% endif %}">
                                 {{ record.get_status_display }}
                             </span>
+                            {% if record.is_emergency %}
+                                <br><span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 mt-1"><i class="bi bi-exclamation-triangle-fill"></i> Emergency</span>
+                            {% endif %}
                         </td>
                         <td class="text-end">
                             <button class="btn btn-sm btn-light border rounded-pill px-3" onclick="viewLogDetails({{ record.id }})">
@@ -156,7 +165,7 @@
                 
                 <div id="modalBodyContent" class="d-none">
                     <div class="row g-4 mb-4">
-                        <div class="col-md-6 border-end">
+                        <div class="col-md-6 detail-col-left">
                             <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-person-fill me-2"></i>Staff & Job Details</h6>
                             <table class="table table-borderless table-sm small">
                                 <tr>
@@ -203,6 +212,7 @@
                                         <img id="imgCheckInSelfie" src="" class="img-fluid rounded-3" style="max-height: 160px; object-fit: cover; width: 100%; display: none;">
                                         <div id="noCheckInSelfie" class="py-4 text-muted small">No photo available</div>
                                     </div>
+                                    <div class="small text-muted mt-1" id="detCheckInSelfieTime"></div>
                                 </div>
                                 <div class="col-6 text-center">
                                     <div class="small fw-semibold text-muted mb-1">Check-Out Selfie</div>
@@ -210,6 +220,7 @@
                                         <img id="imgCheckOutSelfie" src="" class="img-fluid rounded-3" style="max-height: 160px; object-fit: cover; width: 100%; display: none;">
                                         <div id="noCheckOutSelfie" class="py-4 text-muted small">No photo available</div>
                                     </div>
+                                    <div class="small text-muted mt-1" id="detCheckOutSelfieTime"></div>
                                 </div>
                             </div>
                             
@@ -220,6 +231,12 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Emergency Notice (shown only for emergency check-ins) -->
+                    <div id="emergencyNotice" class="d-none mb-4" style="background:#fef2f2; border:1.5px solid #fca5a5; border-radius:12px; padding:14px 18px;">
+                        <div class="fw-bold text-danger mb-1"><i class="bi bi-exclamation-triangle-fill me-2"></i>Emergency Check-In Request</div>
+                        <div class="small text-muted" id="emergencyReasonText"></div>
                     </div>
 
                     <!-- Location Validation Map -->
@@ -248,7 +265,7 @@
                             <textarea class="form-control" name="status_notes" id="formStatusNotes" rows="2" placeholder="Describe the reason for approval/rejection..."></textarea>
                         </div>
 
-                        <div class="d-flex justify-content-end gap-2 border-top pt-3">
+                        <div class="d-flex justify-content-end gap-2 border-top pt-3 modal-action-row">
                             <button type="button" class="btn btn-light border rounded-3" data-bs-dismiss="modal">Close</button>
                             <button type="submit" class="btn btn-primary-gradient rounded-3 px-4">Update Status</button>
                         </div>
@@ -263,8 +280,87 @@
     .bg-success-subtle { background-color: rgba(25, 135, 84, 0.1) !important; }
     .bg-danger-subtle { background-color: rgba(220, 53, 69, 0.1) !important; }
     .text-indigo { color: #6366f1; }
+    .text-gold { color: #b8860b; }
     #reviewModal { z-index: 1060 !important; }
     .modal-backdrop { z-index: 1055 !important; }
+
+    /* ===== Responsive fixes (CSS only) ===== */
+
+    /* Wide table gets a visible scroll affordance on small screens */
+    .history-table-wrap {
+        -webkit-overflow-scrolling: touch;
+    }
+    .history-table-wrap table {
+        min-width: 900px;
+    }
+
+    @media (max-width: 991.98px) {
+        .header-row {
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+        .header-row > div:first-child {
+            flex: 1 1 100%;
+        }
+        .header-row > div:last-child {
+            width: 100%;
+        }
+        .header-row button {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 767.98px) {
+        h2.fw-bold {
+            font-size: 1.35rem;
+        }
+
+        .card.p-3 {
+            padding: 0.85rem !important;
+        }
+
+        /* Table: shrink type, tighten padding so more fits before scroll kicks in */
+        .history-table-wrap table {
+            font-size: 0.8rem;
+            min-width: 760px;
+        }
+        .history-table-wrap td,
+        .history-table-wrap th {
+            padding: 0.55rem 0.5rem;
+            white-space: nowrap;
+        }
+
+        /* Modal detail columns: remove the border divider once stacked */
+        .detail-col-left {
+            border-right: none !important;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .modal-action-row {
+            flex-wrap: wrap;
+        }
+        .modal-action-row button {
+            flex: 1 1 auto;
+        }
+    }
+
+    @media (max-width: 575.98px) {
+        .btn.px-3 {
+            padding-left: 0.85rem !important;
+            padding-right: 0.85rem !important;
+        }
+        #detailMap {
+            height: 160px !important;
+        }
+    }
+
+    @media print {
+        .top-navbar, .sidebar, .footer, form, .btn, .modal { display: none !important; }
+        .main-wrapper { margin-left: 0 !important; }
+        .history-table-wrap table { min-width: 0; font-size: 11px; }
+    }
 </style>
 {% endblock %}
 
@@ -300,6 +396,15 @@
                 document.getElementById('detGeofence').innerHTML = data.is_inside_geofence ? 
                     '<span class="badge bg-success">Inside</span>' : 
                     '<span class="badge bg-danger">Outside</span>';
+
+                // Emergency notice
+                var emNotice = document.getElementById('emergencyNotice');
+                if (data.is_emergency) {
+                    emNotice.classList.remove('d-none');
+                    document.getElementById('emergencyReasonText').textContent = data.emergency_reason || 'No reason provided.';
+                } else {
+                    emNotice.classList.add('d-none');
+                }
                 
                 // Set Selfie images
                 if (data.selfie_url) {
@@ -318,6 +423,23 @@
                 } else {
                     document.getElementById('imgCheckOutSelfie').style.display = 'none';
                     document.getElementById('noCheckOutSelfie').style.display = 'block';
+                }
+
+                // Auto-captured selfie timestamps (device clock, set at time of photo)
+                var inTimeEl = document.getElementById('detCheckInSelfieTime');
+                if (data.selfie_captured_at) {
+                    var inDt = new Date(data.selfie_captured_at);
+                    inTimeEl.innerHTML = '<i class="bi bi-camera me-1"></i>Captured: ' + inDt.toLocaleString();
+                } else {
+                    inTimeEl.innerHTML = '';
+                }
+
+                var outTimeEl = document.getElementById('detCheckOutSelfieTime');
+                if (data.checkout_selfie_captured_at) {
+                    var outDt = new Date(data.checkout_selfie_captured_at);
+                    outTimeEl.innerHTML = '<i class="bi bi-camera me-1"></i>Captured: ' + outDt.toLocaleString();
+                } else {
+                    outTimeEl.innerHTML = '';
                 }
 
                 document.getElementById('detCheckoutNotes').innerText = data.checkout_notes || 'No notes provided.';

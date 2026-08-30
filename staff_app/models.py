@@ -20,6 +20,12 @@ class Profile(models.Model):
     department = models.CharField(max_length=100, blank=True, null=True)
     joined_date = models.DateField(auto_now_add=True)
 
+    # Staff document uploads
+    visa_document = models.ImageField(upload_to='documents/visa/', blank=True, null=True)
+    passport_document = models.ImageField(upload_to='documents/passport/', blank=True, null=True)
+    photo_document = models.ImageField(upload_to='documents/photo/', blank=True, null=True)
+    other_document = models.ImageField(upload_to='documents/other/', blank=True, null=True)
+
     def __str__(self):
         return f"{self.user.username} ({self.role})"
 
@@ -71,6 +77,11 @@ class Job(models.Model):
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='UPCOMING')
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # Ad-hoc jobs: added by staff themselves (not pre-created by admin),
+    # awaiting admin review/approval via the normal Job status field.
+    is_adhoc = models.BooleanField(default=False)
+    requested_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='adhoc_job_requests')
+
     def __str__(self):
         return f"{self.code} - {self.title}"
 
@@ -106,9 +117,18 @@ class CheckInRecord(models.Model):
     distance_from_center = models.FloatField() # meters from geofence center
     is_inside_geofence = models.BooleanField(default=True)
     selfie = models.ImageField(upload_to='selfies/checkin/', blank=True, null=True)
+    # Exact moment the check-in selfie photo was captured on the user's device
+    # (set automatically from the browser at the instant the photo is taken —
+    # not the moment the upload/request completes on the server).
+    selfie_captured_at = models.DateTimeField(blank=True, null=True)
     
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='PENDING_APPROVAL')
     status_notes = models.TextField(blank=True, null=True)
+
+    # Emergency manual check-in: staff can submit even when outside the
+    # geofence, with a reason, for admin to review and approve/reject.
+    is_emergency = models.BooleanField(default=False)
+    emergency_reason = models.TextField(blank=True, null=True)
     
     reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_checkins')
     reviewed_at = models.DateTimeField(blank=True, null=True)
@@ -120,6 +140,8 @@ class CheckInRecord(models.Model):
     check_out_accuracy = models.FloatField(blank=True, null=True)
     check_out_notes = models.TextField(blank=True, null=True)
     check_out_selfie = models.ImageField(upload_to='selfies/checkout/', blank=True, null=True)
+    # Exact moment the check-out selfie photo was captured on the user's device
+    checkout_selfie_captured_at = models.DateTimeField(blank=True, null=True)
     duration_minutes = models.IntegerField(blank=True, null=True)
 
     def __str__(self):

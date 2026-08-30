@@ -70,7 +70,7 @@
                 <p class="text-indigo small fw-semibold mb-2">{{ member.profile.get_role_display }}</p>
                 <span class="badge bg-light text-dark border mb-3 px-3 py-1">{{ member.profile.department|default:"No Department" }}</span>
 
-                <div class="text-start border-top pt-3 small text-muted mb-4">
+                <div class="text-start border-top pt-3 small text-muted mb-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <i class="bi bi-envelope text-primary"></i>
                         <span class="text-truncate">{{ member.email }}</span>
@@ -83,6 +83,16 @@
                         <i class="bi bi-calendar-check text-primary"></i>
                         <span>Joined: {{ member.profile.joined_date|date:"M Y" }}</span>
                     </div>
+                </div>
+
+                <div class="d-flex gap-2 mb-2 flex-wrap">
+                    <button type="button" class="btn btn-sm btn-outline-secondary flex-fill rounded-3"
+                        onclick="openDocsModal('{{ member.get_full_name|default:member.username|escapejs }}', '{% if member.profile.visa_document %}{{ member.profile.visa_document.url }}{% endif %}', '{% if member.profile.passport_document %}{{ member.profile.passport_document.url }}{% endif %}', '{% if member.profile.photo_document %}{{ member.profile.photo_document.url }}{% endif %}', '{% if member.profile.other_document %}{{ member.profile.other_document.url }}{% endif %}')">
+                        <i class="bi bi-folder2-open me-1"></i>Documents
+                    </button>
+                    <a href="{% url 'history' %}?user={{ member.pk }}" class="btn btn-sm btn-outline-secondary flex-fill rounded-3">
+                        <i class="bi bi-clock-history me-1"></i>Work History
+                    </a>
                 </div>
 
                 <div class="d-flex gap-2 mt-auto flex-wrap">
@@ -153,6 +163,51 @@
     </div>
 </div>
 
+<!-- Staff Documents Modal (view-only, populated via JS) -->
+<div class="modal fade" id="docsModal" tabindex="-1" aria-labelledby="docsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-4 shadow-lg border-0">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="docsModalLabel">
+                    Documents — <span id="docsModalName"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-2">
+                <div class="row g-3">
+                    <div class="col-6 col-md-3">
+                        <div class="doc-view-box">
+                            <div class="doc-view-label"><i class="bi bi-card-heading me-1"></i>Visa</div>
+                            <div id="docVisaSlot"></div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="doc-view-box">
+                            <div class="doc-view-label"><i class="bi bi-passport me-1"></i>Passport</div>
+                            <div id="docPassportSlot"></div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="doc-view-box">
+                            <div class="doc-view-label"><i class="bi bi-person-badge me-1"></i>Photo</div>
+                            <div id="docPhotoSlot"></div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="doc-view-box">
+                            <div class="doc-view-label"><i class="bi bi-file-earmark-image me-1"></i>Other</div>
+                            <div id="docOtherSlot"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light border rounded-3 px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Hidden form used to POST password change -->
 <form id="pwChangeForm" method="POST" style="display:none;">
     {% csrf_token %}
@@ -165,9 +220,25 @@
     .bg-success-subtle { background-color: rgba(25, 135, 84, 0.1) !important; }
     .bg-danger-subtle  { background-color: rgba(220, 53, 69, 0.1) !important; }
     .text-indigo       { color: #6366f1; }
-    /* Ensure modal always sits above sidebar/content stacking contexts */
-    #pwModal { z-index: 1060 !important; }
+    /* Ensure modals always sit above sidebar/content stacking contexts */
+    #pwModal, #docsModal { z-index: 1060 !important; }
     .modal-backdrop { z-index: 1055 !important; }
+
+    /* Documents modal preview boxes */
+    .doc-view-box {
+        border: 1.5px dashed #e5e7eb; border-radius: 14px; padding: 10px;
+        text-align: center; background: #f9fafb; height: 100%;
+    }
+    .doc-view-label { font-size: 12px; font-weight: 700; color: #374151; margin-bottom: 8px; }
+    .doc-view-img {
+        width: 100%; height: 110px; object-fit: cover; border-radius: 10px;
+        border: 1px solid #e5e7eb; cursor: zoom-in;
+    }
+    .doc-view-empty {
+        height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        color: #9ca3af; font-size: 11.5px; background: #fff; border-radius: 10px; border: 1px solid #e5e7eb;
+    }
+    .doc-view-empty i { font-size: 18px; margin-bottom: 4px; }
 </style>
 {% endblock %}
 
@@ -235,6 +306,28 @@
         document.getElementById('formNewPw').value     = newPw;
         document.getElementById('formConfirmPw').value = confirmPw;
         form.submit();
+    }
+
+    // ── Staff Documents (view-only) ─────────────────────────
+    function docSlotHtml(url) {
+        if (url) {
+            return '<img src="' + url + '" class="doc-view-img" onclick="window.open(this.src, \'_blank\')">';
+        }
+        return '<div class="doc-view-empty"><i class="bi bi-image"></i>Not uploaded</div>';
+    }
+
+    function openDocsModal(name, visaUrl, passportUrl, photoUrl, otherUrl) {
+        document.getElementById('docsModalName').textContent = name;
+        document.getElementById('docVisaSlot').innerHTML = docSlotHtml(visaUrl);
+        document.getElementById('docPassportSlot').innerHTML = docSlotHtml(passportUrl);
+        document.getElementById('docPhotoSlot').innerHTML = docSlotHtml(photoUrl);
+        document.getElementById('docOtherSlot').innerHTML = docSlotHtml(otherUrl);
+
+        var modalEl = document.getElementById('docsModal');
+        if (modalEl.parentNode !== document.body) {
+            document.body.appendChild(modalEl);
+        }
+        new bootstrap.Modal(modalEl).show();
     }
 </script>
 {% endblock %}

@@ -1,64 +1,76 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if form_type == 'update' %}Update Staff — StaffTracker{% else %}Add Staff — StaffTracker{% endif %}{% endblock %}
+{% block title %}{{ page_title }}{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-8">
         <div class="d-flex align-items-center gap-2 mb-4">
-            <a href="{% url 'staff_list' %}" class="btn btn-sm btn-light border rounded-circle" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
+            <a href="{% url 'staff_list' %}" class="btn btn-sm btn-light border rounded-circle"
+                style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
                 <i class="bi bi-arrow-left"></i>
             </a>
             <div>
-                <h2 class="fw-bold mb-0">{% if form_type == 'update' %}✏️ Edit Staff Profile{% else %}👤 Add New Staff{% endif %}</h2>
-                <p class="text-muted mb-0">Configure staff login credentials, profile info, and dashboard permissions.</p>
+                <h2 class="fw-bold mb-0">{{ page_heading }}</h2>
+                <p class="text-muted mb-0">Configure staff login credentials, profile info, and dashboard permissions.
+                </p>
             </div>
         </div>
 
         <div class="card p-4">
             <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
-                
+
                 <h5 class="fw-bold text-dark border-bottom pb-2 mb-4">Account Information</h5>
-                
+
                 <div class="row g-3 mb-4">
                     <div class="col-md-6">
                         <label class="form-label fw-semibold text-muted small">Username (Required)</label>
-                        <input type="text" name="username" class="form-control rounded-3" value="{{ member.username|default:'' }}" {% if form_type == 'update' %}readonly class="form-control-plaintext bg-light"{% else %}required{% endif %}>
                         {% if form_type == 'update' %}
-                            <small class="text-muted">Username cannot be changed once created.</small>
+                        <input type="text" name="username" class="form-control-plaintext bg-light rounded-3"
+                            value="{{ member.username|default:'' }}" readonly>
+                        <small class="text-muted">Username cannot be changed once created.</small>
+                        {% else %}
+                        <input type="text" name="username" class="form-control rounded-3"
+                            value="{{ member.username|default:'' }}" required>
                         {% endif %}
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold text-muted small">Email Address (Required)</label>
-                        <input type="email" name="email" class="form-control rounded-3" value="{{ member.email|default:'' }}" required>
+                        <input type="email" name="email" class="form-control rounded-3"
+                            value="{{ member.email|default:'' }}" required>
                     </div>
                     {% if form_type == 'create' %}
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold text-muted small">Password (Required)</label>
-                            <input type="password" name="password" class="form-control rounded-3" required>
-                        </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold text-muted small">Password (Required)</label>
+                        <input type="password" name="password" class="form-control rounded-3" required>
+                    </div>
                     {% endif %}
                 </div>
 
                 <h5 class="fw-bold text-dark border-bottom pb-2 mb-4">Profile Details</h5>
-                
+
                 <div class="row g-3 mb-4">
                     <div class="col-md-6">
                         <label class="form-label fw-semibold text-muted small">First Name</label>
-                        <input type="text" name="first_name" class="form-control rounded-3" value="{{ member.first_name|default:'' }}">
+                        <input type="text" name="first_name" class="form-control rounded-3"
+                            value="{{ member.first_name|default:'' }}">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold text-muted small">Last Name</label>
-                        <input type="text" name="last_name" class="form-control rounded-3" value="{{ member.last_name|default:'' }}">
+                        <input type="text" name="last_name" class="form-control rounded-3"
+                            value="{{ member.last_name|default:'' }}">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold text-muted small">Phone Number</label>
-                        <input type="text" name="phone" class="form-control rounded-3" value="{{ member.profile.phone|default:'' }}">
+                        <input type="text" name="phone" class="form-control rounded-3"
+                            value="{{ member.profile.phone|default:'' }}">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold text-muted small">Department</label>
-                        <input type="text" name="department" class="form-control rounded-3" placeholder="e.g. Security, Maintenance, Sales" value="{{ member.profile.department|default:'' }}">
+                        <input type="text" name="department" class="form-control rounded-3"
+                            placeholder="e.g. Security, Maintenance, Sales"
+                            value="{{ member.profile.department|default:'' }}">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold text-muted small">System Role</label>
@@ -71,34 +83,46 @@
                     <div class="col-md-6">
                         <label class="form-label fw-semibold text-muted small">Profile Avatar</label>
                         {% if member.profile.avatar %}
-                            <div class="d-flex align-items-center gap-3 mb-2">
-                                <img src="{{ member.profile.avatar.url }}" class="rounded-circle border" style="width: 45px; height: 45px; object-fit: cover;">
-                                <span class="small text-muted">Current Avatar</span>
-                            </div>
+                        <div class="d-flex align-items-center gap-3 mb-2">
+                            <img src="{{ member.profile.avatar.url }}" class="rounded-circle border"
+                                style="width: 45px; height: 45px; object-fit: cover;">
+                            <span class="small text-muted">Current Avatar</span>
+                        </div>
                         {% endif %}
                         <input type="file" name="avatar" class="form-control rounded-3">
                     </div>
                 </div>
 
                 <h5 class="fw-bold text-dark border-bottom pb-2 mb-4">Status & Permissions</h5>
-                
+
                 <div class="row g-3 mb-4">
                     <div class="col-12">
-                        <div class="form-check form-switch p-3 bg-light rounded-3 d-flex justify-content-between align-items-center border">
+                        <div
+                            class="form-check form-switch p-3 bg-light rounded-3 d-flex justify-content-between align-items-center border">
                             <div class="ms-0">
-                                <label class="form-check-label fw-semibold d-block" for="activeSwitch">Active Account</label>
-                                <small class="text-muted">Disable to temporarily block access to the system and geofencing app.</small>
+                                <label class="form-check-label fw-semibold d-block" for="activeSwitch">Active
+                                    Account</label>
+                                <small class="text-muted">Disable to temporarily block access to the system and
+                                    geofencing app.</small>
                             </div>
-                            <input class="form-check-input ms-3 me-0" type="checkbox" name="is_active" id="activeSwitch" style="transform: scale(1.35);" {% if member.is_active|default:True %}checked{% endif %}>
+                            {% if member.is_active|default:True %}
+                            <input class="form-check-input ms-3 me-0" type="checkbox" name="is_active"
+                                id="activeSwitch" style="transform: scale(1.35);" checked>
+                            {% else %}
+                            <input class="form-check-input ms-3 me-0" type="checkbox" name="is_active"
+                                id="activeSwitch" style="transform: scale(1.35);">
+                            {% endif %}
                         </div>
                     </div>
                 </div>
 
                 <div class="d-flex gap-3 justify-content-end mt-4">
                     <a href="{% url 'staff_list' %}" class="btn btn-light border rounded-3 px-4 py-2">Cancel</a>
-                    <button type="submit" class="btn btn-primary-gradient rounded-3 px-4 py-2">
-                        {% if form_type == 'update' %}Save Changes{% else %}Create Staff{% endif %}
-                    </button>
+                    {% if form_type == 'update' %}
+                    <button type="submit" class="btn btn-primary-gradient rounded-3 px-4 py-2">Save Changes</button>
+                    {% else %}
+                    <button type="submit" class="btn btn-primary-gradient rounded-3 px-4 py-2">Create Staff</button>
+                    {% endif %}
                 </div>
             </form>
         </div>
@@ -106,7 +130,8 @@
 </div>
 
 <style>
-    .form-control:focus, .form-select:focus {
+    .form-control:focus,
+    .form-select:focus {
         border-color: #6366f1 !important;
         box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
     }

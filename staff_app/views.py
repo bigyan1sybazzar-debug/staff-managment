@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q
@@ -21,6 +22,25 @@ def haversine_distance(lat1, lng1, lat2, lng2):
          + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2))
          * math.sin(d_lng / 2) ** 2)
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def parse_client_captured_at(request):
+    """
+    Parse the 'selfie_captured_at' field sent by the browser (ISO 8601 string,
+    set at the exact moment the photo was taken client-side). Falls back to
+    the current server time if it's missing or malformed, so this never
+    blocks a check-in/check-out.
+    """
+    raw = request.POST.get('selfie_captured_at')
+    if not raw:
+        return timezone.now()
+    dt = parse_datetime(raw)
+    if dt is None:
+        return timezone.now()
+    if timezone.is_naive(dt):
+        dt = timezone.make_aware(dt, timezone.utc)
+    return dt
+
 
 # ==========================
 # Authentication Views
@@ -135,6 +155,83 @@ def staff_dashboard_view(request):
     return render(request, 'staff_dashboard.html', context)
 
 
+# ==========================
+# Ad-hoc Job Request (staff self-add, pending admin approval)
+# ==========================
+@login_required
+def adhoc_job_create_view(request):
+    if request.method != 'POST':
+        return redirect('staff_dashboard')
+    try:
+        title      = request.POST.get('title', '').strip()
+        site_name  = request.POST.get('site_name', '').strip()
+        address    = request.POST.get('address', '').strip()
+        date       = request.POST.get('date')
+        start_time = request.POST.get('start_time')
+        end_time   = request.POST.get('end_time')
+        notes      = request.POST.get('notes', '').strip()
+        lat        = float(request.POST.get('lat', 0) or 0)
+        lng        = float(request.POST.get('lng', 0) or 0)
+
+        if not title or not site_name or not date or not start_time or not end_time:
+            return JsonResponse({'ok': False, 'error': 'Please fill in all required fields.'}, status=400)
+
+        settings_obj = SystemSettings.get_settings()
+        code = f"ADHOC-{timezone.now().strftime('%Y%m%d%H%M%S')}"
+
+        job = Job.objects.create(
+            title=title,
+            code=code,
+            description=notes,
+            site_name=site_name,
+            address=address or site_name,
+            lat=lat,
+            lng=lng,
+            geofence_radius=settings_obj.default_geofence_radius,
+            start_time=start_time,
+            end_time=end_time,
+            date=date,
+            require_selfie=True,
+            require_checkout=True,
+            status='PENDING_APPROVAL',
+            is_adhoc=True,
+            requested_by=request.user,
+        )
+        job.assigned_staff.add(request.user)
+
+        return JsonResponse({'ok': True, 'job_pk': job.pk})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'error': str(e)}, status=400)
+
+
+# ==========================
+# Staff Profile Document Uploads
+# ==========================
+@login_required
+def profile_documents_upload_view(request):
+    if request.method == 'POST':
+        profile = request.user.profile
+
+        visa = request.FILES.get('visa_document')
+        passport = request.FILES.get('passport_document')
+        photo = request.FILES.get('photo_document')
+        other = request.FILES.get('other_document')
+
+        if visa:
+            profile.visa_document = visa
+        if passport:
+            profile.passport_document = passport
+        if photo:
+            profile.photo_document = photo
+        if other:
+            profile.other_document = other
+
+        profile.save()
+        messages.success(request, "Documents uploaded successfully.")
+
+    return redirect('/my-dashboard/#profile')
+
+
 
 # ==========================
 # Check-In View
@@ -152,9 +249,15 @@ def checkin_view(request, job_pk):
         lng      = float(request.POST.get('lng', 0))
         accuracy = float(request.POST.get('accuracy', 0))
         selfie   = request.FILES.get('selfie')
+        is_emergency = request.POST.get('is_emergency') == '1'
+        emergency_reason = request.POST.get('emergency_reason', '').strip()
 
         distance  = haversine_distance(job.lat, job.lng, lat, lng)
         is_inside = distance <= job.geofence_radius
+
+        # Exact moment the selfie was taken on the device (auto-captured client-side).
+        # Only set when a selfie was actually provided.
+        selfie_captured_at = parse_client_captured_at(request) if selfie else None
 
         record = CheckInRecord.objects.create(
             job=job,
@@ -165,6 +268,9 @@ def checkin_view(request, job_pk):
             distance_from_center=round(distance, 1),
             is_inside_geofence=is_inside,
             selfie=selfie,
+            selfie_captured_at=selfie_captured_at,
+            is_emergency=is_emergency,
+            emergency_reason=emergency_reason if is_emergency else '',
             status='PENDING_APPROVAL',
         )
         return JsonResponse({'ok': True, 'record_pk': record.id, 'job_pk': job.pk})
@@ -202,6 +308,8 @@ def checkout_view(request, record_pk):
         record.duration_minutes    = duration
         if selfie:
             record.check_out_selfie = selfie
+            # Exact moment the check-out selfie was taken on the device
+            record.checkout_selfie_captured_at = parse_client_captured_at(request)
         record.status = 'PENDING_APPROVAL'
         record.save()
         return JsonResponse({'ok': True, 'record_pk': record.pk, 'job_pk': record.job_id, 'duration': duration})
@@ -259,7 +367,11 @@ def staff_create_view(request):
         
         if User.objects.filter(username=username).exists():
             messages.error(request, "Username already exists.")
-            return render(request, 'staff_form.html', {'form_type': 'create'})
+            return render(request, 'staff_form.html', {
+                'form_type': 'create',
+                'page_title': 'Add Staff — StaffTracker',
+                'page_heading': '👤 Add New Staff',
+            })
             
         # Create User
         user = User.objects.create_user(
@@ -283,9 +395,11 @@ def staff_create_view(request):
         messages.success(request, f"Staff member '{username}' created successfully!")
         return redirect('staff_list')
         
-    return render(request, 'staff_form.html', {'form_type': 'create'})
-
-@login_required
+    return render(request, 'staff_form.html', {
+        'form_type': 'create',
+        'page_title': 'Add Staff — StaffTracker',
+        'page_heading': '👤 Add New Staff',
+    })
 def staff_update_view(request, pk):
     member = get_object_or_404(User, pk=pk)
 
@@ -336,7 +450,9 @@ def staff_update_view(request, pk):
 
     context = {
         'member': member,
-        'form_type': 'update'
+        'form_type': 'update',
+        'page_title': 'Update Staff — StaffTracker',
+        'page_heading': '✏️ Edit Staff Profile',
     }
     return render(request, 'staff_form.html', context)
 
@@ -376,9 +492,13 @@ def history_view(request):
             'distance_from_center': record.distance_from_center,
             'is_inside_geofence': record.is_inside_geofence,
             'selfie_url': record.selfie.url if record.selfie else None,
+            'selfie_captured_at': record.selfie_captured_at.isoformat() if record.selfie_captured_at else None,
+            'is_emergency': record.is_emergency,
+            'emergency_reason': record.emergency_reason,
             'status': record.status,
             'status_notes': record.status_notes,
             'checkout_selfie_url': record.check_out_selfie.url if record.check_out_selfie else None,
+            'checkout_selfie_captured_at': record.checkout_selfie_captured_at.isoformat() if record.checkout_selfie_captured_at else None,
             'checkout_notes': record.check_out_notes,
         }
         return JsonResponse(data)
@@ -634,4 +754,3 @@ def job_delete_view(request, pk):
     job.delete()
     messages.success(request, f"Job '{code}' deleted successfully.")
     return redirect('job_list')
-

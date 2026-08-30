@@ -10,7 +10,7 @@
     </div>
     <div>
         <span class="badge bg-light text-dark border p-2 fw-semibold">
-            <i class="bi bi-clock-history me-1 text-primary"></i> Live Server Time (UTC)
+            <i class="bi bi-clock-history me-1 text-gold"></i> Live Server Time (UTC)
         </span>
     </div>
 </div>
@@ -23,9 +23,9 @@
                 <div>
                     <span class="text-muted small fw-semibold">Total Staff</span>
                     <h3 class="fw-bold my-1">{{ total_staff_count }}</h3>
-                    <span class="text-success small"><i class="bi bi-arrow-up-right me-1"></i>Active Directory</span>
+                    <span class="text-gold-dark small"><i class="bi bi-arrow-up-right me-1"></i>Active Directory</span>
                 </div>
-                <div class="bg-indigo-light p-3 rounded-4 text-indigo">
+                <div class="bg-gold-light p-3 rounded-4 text-gold">
                     <i class="bi bi-people-fill fs-3"></i>
                 </div>
             </div>
@@ -37,9 +37,9 @@
                 <div>
                     <span class="text-muted small fw-semibold">Active Jobs</span>
                     <h3 class="fw-bold my-1">{{ active_jobs_count }}</h3>
-                    <span class="text-primary small"><i class="bi bi-calendar-event me-1"></i>Scheduled Today</span>
+                    <span class="text-gold-dark small"><i class="bi bi-calendar-event me-1"></i>Scheduled Today</span>
                 </div>
-                <div class="bg-primary-light p-3 rounded-4 text-primary">
+                <div class="bg-gold-light p-3 rounded-4 text-gold">
                     <i class="bi bi-briefcase-fill fs-3"></i>
                 </div>
             </div>
@@ -51,9 +51,9 @@
                 <div>
                     <span class="text-muted small fw-semibold">Checked In</span>
                     <h3 class="fw-bold my-1">{{ checked_in_count }}</h3>
-                    <span class="text-info small"><i class="bi bi-geo-alt-fill me-1"></i>On-Site Right Now</span>
+                    <span class="text-gold-dark small"><i class="bi bi-geo-alt-fill me-1"></i>On-Site Right Now</span>
                 </div>
-                <div class="bg-info-light p-3 rounded-4 text-info">
+                <div class="bg-gold-light p-3 rounded-4 text-gold">
                     <i class="bi bi-check-circle-fill fs-3"></i>
                 </div>
             </div>
@@ -61,14 +61,14 @@
     </div>
     <div class="col-sm-6 col-xl-3">
         <a href="{% url 'history' %}?status=PENDING_APPROVAL" class="text-decoration-none text-dark">
-            <div class="card card-hover h-100 p-3 border border-warning-subtle">
+            <div class="card card-hover h-100 p-3 border border-gold-subtle">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
                         <span class="text-muted small fw-semibold">Pending Approvals</span>
-                        <h3 class="fw-bold my-1 text-warning">{{ pending_approvals_count }}</h3>
-                        <span class="text-warning small"><i class="bi bi-shield-fill-exclamation me-1"></i>Awaiting Review</span>
+                        <h3 class="fw-bold my-1 text-gold-dark">{{ pending_approvals_count }}</h3>
+                        <span class="text-gold-dark small"><i class="bi bi-shield-fill-exclamation me-1"></i>Awaiting Review</span>
                     </div>
-                    <div class="bg-warning-light p-3 rounded-4 text-warning">
+                    <div class="bg-gold-light p-3 rounded-4 text-gold-dark">
                         <i class="bi bi-hourglass-split fs-3"></i>
                     </div>
                 </div>
@@ -82,8 +82,8 @@
     <div class="col-lg-7">
         <div class="card h-100 p-3">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="fw-bold mb-0"><i class="bi bi-map-fill me-2 text-primary"></i>Live Staff Operations Map</h5>
-                <a href="{% url 'map_view' %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">View Full Map</a>
+                <h5 class="fw-bold mb-0"><i class="bi bi-map-fill me-2 text-gold"></i>Live Staff Operations Map</h5>
+                <a href="{% url 'map_view' %}" class="btn btn-sm btn-outline-gold rounded-pill px-3">View Full Map</a>
             </div>
             <div id="dashboardMap" style="height: 380px; border-radius: 12px; border: 1px solid #e2e8f0;"></div>
         </div>
@@ -92,29 +92,29 @@
     <!-- Quick Operations -->
     <div class="col-lg-5">
         <div class="card h-100 p-3">
-            <h5 class="fw-bold mb-3"><i class="bi bi-lightning-charge-fill me-2 text-warning"></i>Quick Actions</h5>
+            <h5 class="fw-bold mb-3"><i class="bi bi-lightning-charge-fill me-2 text-gold"></i>Quick Actions</h5>
             <div class="row g-3">
                 <div class="col-6">
                     <a href="{% url 'staff_create' %}" class="btn btn-outline-dark w-100 py-3 rounded-4 d-flex flex-column align-items-center gap-2">
-                        <i class="bi bi-person-plus-fill fs-3 text-indigo"></i>
+                        <i class="bi bi-person-plus-fill fs-3 text-gold"></i>
                         <span class="fw-semibold small">Add New Staff</span>
                     </a>
                 </div>
                 <div class="col-6">
                     <a href="{% url 'job_create' %}" class="btn btn-outline-dark w-100 py-3 rounded-4 d-flex flex-column align-items-center gap-2">
-                        <i class="bi bi-plus-circle-fill fs-3 text-success"></i>
+                        <i class="bi bi-plus-circle-fill fs-3 text-gold"></i>
                         <span class="fw-semibold small">Create New Job</span>
                     </a>
                 </div>
                 <div class="col-6">
                     <a href="{% url 'map_view' %}" class="btn btn-outline-dark w-100 py-3 rounded-4 d-flex flex-column align-items-center gap-2">
-                        <i class="bi bi-geo-fill fs-3 text-danger"></i>
+                        <i class="bi bi-geo-fill fs-3 text-gold"></i>
                         <span class="fw-semibold small">Live Tracking</span>
                     </a>
                 </div>
                 <div class="col-6">
                     <a href="/admin/staff_app/systemsettings/1/change/" class="btn btn-outline-dark w-100 py-3 rounded-4 d-flex flex-column align-items-center gap-2">
-                        <i class="bi bi-sliders fs-3 text-primary"></i>
+                        <i class="bi bi-sliders fs-3 text-gold"></i>
                         <span class="fw-semibold small">System Settings</span>
                     </a>
                 </div>
@@ -131,7 +131,7 @@
                                 <div class="fw-semibold text-dark">{{ job.title }}</div>
                                 <small class="text-muted"><i class="bi bi-geo-alt me-1"></i>{{ job.site_name }}</small>
                             </div>
-                            <span class="badge rounded-pill {% if job.status == 'COMPLETED' %}bg-success{% elif job.status == 'CHECKED_IN' %}bg-info{% else %}bg-secondary{% endif %}">
+                            <span class="badge rounded-pill {% if job.status == 'COMPLETED' %}bg-gold{% elif job.status == 'CHECKED_IN' %}bg-gold-soft text-dark{% else %}bg-secondary{% endif %}">
                                 {{ job.status }}
                             </span>
                         </div>
@@ -147,7 +147,7 @@
 <!-- Recent Check-Ins -->
 <div class="card p-3 mb-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="fw-bold mb-0"><i class="bi bi-journal-check me-2 text-success"></i>Recent Check-In Activity</h5>
+        <h5 class="fw-bold mb-0"><i class="bi bi-journal-check me-2 text-gold"></i>Recent Check-In Activity</h5>
         <a href="{% url 'history' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">View Log History</a>
     </div>
     <div class="table-responsive">
@@ -169,7 +169,7 @@
                     <tr>
                         <td>
                             <div class="d-flex align-items-center gap-3">
-                                <div class="avatar-sm bg-light text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px;">
+                                <div class="avatar-sm bg-gold-light text-gold-dark rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px;">
                                     {{ record.user.username|slice:":2"|upper }}
                                 </div>
                                 <div>
@@ -178,21 +178,21 @@
                                 </div>
                             </div>
                         </td>
-                        <td><span class="fw-mono text-indigo">{{ record.job.code }}</span></td>
+                        <td><span class="fw-mono text-gold-dark">{{ record.job.code }}</span></td>
                         <td>{{ record.job.site_name }}</td>
                         <td>{{ record.timestamp|date:"M d, Y H:i" }}</td>
                         <td>{{ record.accuracy|floatformat:1 }}m</td>
                         <td>
                             {% if record.is_inside_geofence %}
-                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2">Inside Geofence</span>
+                                <span class="badge bg-gold-subtle text-gold-dark border border-gold-subtle rounded-pill px-2">Inside Geofence</span>
                             {% else %}
                                 <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2">Outside Geofence ({{ record.distance_from_center|floatformat:1 }}m)</span>
                             {% endif %}
                         </td>
                         <td>
                             <span class="badge rounded-pill 
-                                {% if record.status == 'APPROVED' or record.status == 'COMPLETED' %}bg-success
-                                {% elif record.status == 'PENDING_APPROVAL' %}bg-warning text-dark
+                                {% if record.status == 'APPROVED' or record.status == 'COMPLETED' %}bg-gold
+                                {% elif record.status == 'PENDING_APPROVAL' %}bg-gold-soft text-dark
                                 {% else %}bg-danger{% endif %}">
                                 {{ record.get_status_display }}
                             </span>
@@ -214,12 +214,50 @@
 </div>
 
 <style>
-    .bg-indigo-light { background-color: rgba(99, 102, 241, 0.1); }
-    .text-indigo { color: #6366f1; }
-    .bg-primary-light { background-color: rgba(13, 110, 253, 0.1); }
-    .bg-info-light { background-color: rgba(13, 202, 240, 0.1); }
-    .bg-warning-light { background-color: rgba(255, 193, 7, 0.1); }
+    /* ===== White & Gold Theme ===== */
+    body {
+        background-color: #ffffff;
+    }
+
+    .card {
+        background-color: #ffffff;
+        border: 1px solid #f0e6cc;
+        box-shadow: 0 2px 10px rgba(212, 175, 55, 0.06);
+    }
+
+    .card-hover:hover {
+        box-shadow: 0 4px 16px rgba(212, 175, 55, 0.18);
+        border-color: #d4af37;
+    }
+
+    /* Gold palette */
+    .bg-gold-light { background-color: rgba(212, 175, 55, 0.12); }
+    .bg-gold-subtle { background-color: rgba(212, 175, 55, 0.10); }
+    .bg-gold-soft { background-color: #f1d896; }
+    .bg-gold { background-color: #d4af37 !important; color: #ffffff; }
+
+    .text-gold { color: #b8860b; }
+    .text-gold-dark { color: #9a6a00; }
+
+    .border-gold-subtle { border-color: rgba(212, 175, 55, 0.4) !important; }
+
+    .btn-outline-gold {
+        color: #b8860b;
+        border-color: #d4af37;
+        background-color: #ffffff;
+    }
+    .btn-outline-gold:hover {
+        color: #ffffff;
+        background-color: #d4af37;
+        border-color: #d4af37;
+    }
+
     .fw-mono { font-family: monospace; }
+
+    /* Table header tint */
+    .table-light {
+        background-color: #fdf8ec;
+    }
 </style>
 {% endblock %}
 
@@ -239,7 +277,7 @@
                 var markersGroup = L.featureGroup();
                 data.locations.forEach(loc => {
                     if (loc.lat && loc.lng) {
-                        var color = loc.is_inside_geofence ? 'green' : 'red';
+                        var color = loc.is_inside_geofence ? '#d4af37' : 'red';
                         // Custom colored marker
                         var marker = L.circleMarker([loc.lat, loc.lng], {
                             radius: 8,

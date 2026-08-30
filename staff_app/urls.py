@@ -16,6 +16,8 @@ urlpatterns = [
     path("jobs/add/", views.job_create_view, name="job_create"),
     path("jobs/<int:pk>/edit/", views.job_update_view, name="job_update"),
     path("jobs/<int:pk>/delete/", views.job_delete_view, name="job_delete"),
+    path("jobs/adhoc/add/", views.adhoc_job_create_view, name="adhoc_job_create"),
+    path("profile/documents/upload/", views.profile_documents_upload_view, name="profile_documents_upload"),
     path("history/", views.history_view, name="history"),
     path("map/", views.map_view, name="map_view"),
 
