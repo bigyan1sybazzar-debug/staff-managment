@@ -224,10 +224,12 @@
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         // Initialize Map
-        var map = L.map('liveTrackingMap').setView([27.7172, 85.3240], 12);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
+        // Initialize Map - London
+var map = L.map('liveTrackingMap').setView([51.5074, -0.1278], 11);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
 
         var markersMap = {};
         var circleGeofences = {};

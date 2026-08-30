@@ -264,8 +264,9 @@
 {% block extra_js %}
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        // Initialize Dashboard Map
-        var map = L.map('dashboardMap').setView([27.7172, 85.3240], 12); // Default to Kathmandu coordinates, can adjust
+        // Initialize Dashboard Map - Default to London
+        var map = L.map('dashboardMap').setView([51.5074, -0.1278], 11);
+
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
@@ -275,9 +276,11 @@
             .then(response => response.json())
             .then(data => {
                 var markersGroup = L.featureGroup();
+
                 data.locations.forEach(loc => {
                     if (loc.lat && loc.lng) {
                         var color = loc.is_inside_geofence ? '#d4af37' : 'red';
+
                         // Custom colored marker
                         var marker = L.circleMarker([loc.lat, loc.lng], {
                             radius: 8,
@@ -287,20 +290,20 @@
                             opacity: 1,
                             fillOpacity: 0.8
                         }).addTo(map);
-                        
+
                         marker.bindPopup(`
                             <strong>${loc.name}</strong><br>
                             Site: ${loc.site_name}<br>
                             Status: ${loc.status}<br>
                             Geofence: ${loc.is_inside_geofence ? 'Inside' : 'Outside'}
                         `);
+
                         markersGroup.addLayer(marker);
                     }
                 });
-                
-                if (data.locations.length > 0) {
-                    map.fitBounds(markersGroup.getBounds(), { padding: [30, 30] });
-                }
+
+                // Keep London as the default map view.
+                // Do not automatically zoom to staff locations.
             })
             .catch(err => console.error("Error loading map data:", err));
     });
