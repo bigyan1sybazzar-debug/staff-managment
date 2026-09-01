@@ -105,6 +105,32 @@
                     </div>
                 </div>
 
+                <h5 class="fw-bold text-dark border-bottom pb-2 mb-4">Staff Access Duration</h5>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold text-muted small">Grant Access For</label>
+                        <select name="duration_choice" id="durationChoice" class="form-select rounded-3" onchange="toggleCustomDuration()">
+                            <option value="15_DAYS" {% if existing_assignment.duration_label == '15_DAYS' or not existing_assignment %}selected{% endif %}>15 Days</option>
+                            <option value="30_DAYS" {% if existing_assignment.duration_label == '30_DAYS' %}selected{% endif %}>30 Days</option>
+                            <option value="3_MONTHS" {% if existing_assignment.duration_label == '3_MONTHS' %}selected{% endif %}>3 Months</option>
+                            <option value="6_MONTHS" {% if existing_assignment.duration_label == '6_MONTHS' %}selected{% endif %}>6 Months</option>
+                            <option value="1_YEAR" {% if existing_assignment.duration_label == '1_YEAR' %}selected{% endif %}>1 Year</option>
+                            <option value="CUSTOM" {% if existing_assignment.duration_label == 'CUSTOM' %}selected{% endif %}>Custom Range</option>
+                        </select>
+                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Access starts today and applies to every staff member checked below. It expires automatically after this period and the job simply disappears from their list.</small>
+                    </div>
+                    <div class="col-md-6" id="customDurationWrap" style="display:none;">
+                        <label class="form-label fw-semibold text-muted small">Custom End Date</label>
+                        <input type="date" name="custom_end_date" id="customEndDate" class="form-control rounded-3"
+                            value="{% if existing_assignment.duration_label == 'CUSTOM' %}{{ existing_assignment.granted_end|date:'Y-m-d' }}{% endif %}"
+                            min="{{ job.date|date:'Y-m-d' }}">
+                        {% if existing_assignment %}
+                        <small class="text-muted">Currently granted until {{ existing_assignment.granted_end|date:"M d, Y" }}.</small>
+                        {% endif %}
+                    </div>
+                </div>
+
                 <h5 class="fw-bold text-dark border-bottom pb-2 mb-4">Staff Assignment & Checks</h5>
                 
                 <div class="row g-3 mb-4">
@@ -241,6 +267,16 @@
             button.closest('.instruction-row').querySelector('input').value = '';
         }
     }
+
+    function toggleCustomDuration() {
+        var sel = document.getElementById('durationChoice');
+        var wrap = document.getElementById('customDurationWrap');
+        var endInput = document.getElementById('customEndDate');
+        var isCustom = sel.value === 'CUSTOM';
+        wrap.style.display = isCustom ? 'block' : 'none';
+        endInput.required = isCustom;
+    }
+    document.addEventListener('DOMContentLoaded', toggleCustomDuration);
 
     function detectAdminLocation() {
         if (navigator.geolocation) {

@@ -2,6 +2,8 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
+import datetime
 
 # ==========================
 # User Profile & Roles
@@ -86,7 +88,10 @@ class Job(models.Model):
     lng = models.FloatField()
     geofence_radius = models.IntegerField(default=75) # in meters
 
-    assigned_staff = models.ManyToManyField(User, related_name='assigned_jobs', blank=True)
+    assigned_staff = models.ManyToManyField(
+        User, through='JobAssignment', through_fields=('job', 'staff'),
+        related_name='assigned_jobs', blank=True
+    )
     
     start_time = models.TimeField()
     end_time = models.TimeField()
@@ -112,6 +117,64 @@ class Job(models.Model):
             return json.loads(self.instructions_json)
         except:
             return []
+
+
+# ==========================
+# Per-staff access grant for a Job
+# (through-model for Job.assigned_staff — lets an admin give each staff
+# member a time-limited window during which the job shows up for them)
+# ==========================
+class JobAssignment(models.Model):
+    DURATION_CHOICES = [
+        ('15_DAYS', '15 Days'),
+        ('30_DAYS', '30 Days'),
+        ('3_MONTHS', '3 Months'),
+        ('6_MONTHS', '6 Months'),
+        ('1_YEAR', '1 Year'),
+        ('CUSTOM', 'Custom'),
+    ]
+
+    # Preset -> number of days from the grant start date
+    DURATION_DAYS = {
+        '15_DAYS': 15,
+        '30_DAYS': 30,
+        '3_MONTHS': 90,
+        '6_MONTHS': 182,
+        '1_YEAR': 365,
+    }
+
+    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='staff_assignments')
+    staff = models.ForeignKey(User, on_delete=models.CASCADE, related_name='job_assignments')
+
+    duration_label = models.CharField(max_length=20, choices=DURATION_CHOICES, default='CUSTOM')
+    granted_start = models.DateField(default=timezone.now)
+    granted_end = models.DateField()
+
+    granted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='job_grants_made')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('job', 'staff')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.staff.username} → {self.job.code} ({self.granted_start} to {self.granted_end})"
+
+    @property
+    def is_active_today(self):
+        today = timezone.now().date()
+        return self.granted_start <= today <= self.granted_end
+
+    @classmethod
+    def compute_end_date(cls, duration_label, start_date, custom_end_date=None):
+        """Resolve the granted_end date from a duration choice."""
+        if duration_label == 'CUSTOM' and custom_end_date:
+            return custom_end_date
+        days = cls.DURATION_DAYS.get(duration_label)
+        if days:
+            return start_date + datetime.timedelta(days=days)
+        # Fallback safety net — should not normally be hit
+        return start_date + datetime.timedelta(days=30)
 
 
 # ==========================

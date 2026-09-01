@@ -7,11 +7,11 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Q
+from django.db.models import Q, Sum
 import json
 import math
 import datetime
-from .models import Profile, Job, CheckInRecord, SystemSettings, WorkLocation
+from .models import Profile, Job, CheckInRecord, SystemSettings, WorkLocation, JobAssignment
 
 
 def haversine_distance(lat1, lng1, lat2, lng2):
@@ -123,7 +123,13 @@ def staff_dashboard_view(request):
     today = timezone.now().date()
     user  = request.user
 
-    all_assigned  = Job.objects.filter(assigned_staff=user)
+    # Only jobs where this staff member's admin-granted access window
+    # actually covers today — expired grants simply drop out of the list.
+    active_job_ids = JobAssignment.objects.filter(
+        staff=user, granted_start__lte=today, granted_end__gte=today
+    ).values_list('job_id', flat=True)
+
+    all_assigned  = Job.objects.filter(id__in=active_job_ids)
     today_jobs    = all_assigned.filter(date=today).order_by('start_time')
     upcoming_jobs = all_assigned.filter(date__gt=today).order_by('date', 'start_time')
 
@@ -552,14 +558,20 @@ def history_view(request):
 
     # Basic page listing
     checkins = CheckInRecord.objects.all().order_by('-timestamp')
-    
+
+    # Staff members only ever see their own history; admins see everyone's
+    # (still filterable by the 'user' dropdown below).
+    is_staff_role = hasattr(request.user, 'profile') and request.user.profile.role == 'STAFF'
+    if is_staff_role:
+        checkins = checkins.filter(user=request.user)
+
     # Apply filters
     user_filter = request.GET.get('user')
     job_filter = request.GET.get('job')
     status_filter = request.GET.get('status')
     date_filter = request.GET.get('date')
     
-    if user_filter:
+    if user_filter and not is_staff_role:
         checkins = checkins.filter(user_id=user_filter)
     if job_filter:
         checkins = checkins.filter(job_id=job_filter)
@@ -571,10 +583,33 @@ def history_view(request):
     staff_list = User.objects.filter(profile__role='STAFF')
     jobs_list = Job.objects.all()
 
+    # ── Completed-job duration totals ──
+    # Sum of duration_minutes across all COMPLETED check-ins in the
+    # currently filtered set (respects the staff-only restriction above).
+    completed_qs = checkins.filter(status='COMPLETED', duration_minutes__isnull=False)
+    total_completed_minutes = completed_qs.aggregate(total=Sum('duration_minutes'))['total'] or 0
+
+    # Per-staff breakdown (only meaningful/shown for admins looking at everyone)
+    completed_by_staff = completed_qs.values(
+        'user__id', 'user__username', 'user__first_name', 'user__last_name'
+    ).annotate(total_minutes=Sum('duration_minutes')).order_by('-total_minutes')
+
+    def minutes_to_hm(total_minutes):
+        hours, minutes = divmod(int(total_minutes), 60)
+        return f"{hours}h {minutes}m"
+
     context = {
         'checkins': checkins,
         'staff_list': staff_list,
         'jobs_list': jobs_list,
+        'is_staff_role': is_staff_role,
+        'total_completed_minutes': total_completed_minutes,
+        'total_completed_display': minutes_to_hm(total_completed_minutes),
+        'completed_jobs_count': completed_qs.count(),
+        'completed_by_staff': [
+            {**row, 'total_display': minutes_to_hm(row['total_minutes'])}
+            for row in completed_by_staff
+        ],
     }
     return render(request, 'history.html', context)
 
@@ -755,11 +790,31 @@ def job_create_view(request):
             status=status
         )
         sync_work_location(site_name, address, lat, lng, geofence_radius, request.user)
-        
+
+        # ── Staff access duration (per-job grant window) ──
+        duration_choice = request.POST.get('duration_choice', '30_DAYS')
+        custom_end_raw = request.POST.get('custom_end_date', '')
+        today = timezone.now().date()
+        custom_end_date = None
+        if custom_end_raw:
+            try:
+                custom_end_date = datetime.datetime.strptime(custom_end_raw, '%Y-%m-%d').date()
+            except ValueError:
+                custom_end_date = None
+        granted_end = JobAssignment.compute_end_date(duration_choice, today, custom_end_date)
+
         assigned_staff_ids = request.POST.getlist('assigned_staff')
-        if assigned_staff_ids:
-            job.assigned_staff.set(User.objects.filter(id__in=assigned_staff_ids))
-            
+        for staff_id in assigned_staff_ids:
+            JobAssignment.objects.update_or_create(
+                job=job, staff_id=staff_id,
+                defaults={
+                    'duration_label': duration_choice,
+                    'granted_start': today,
+                    'granted_end': granted_end,
+                    'granted_by': request.user,
+                }
+            )
+
         messages.success(request, f"Job '{code}' created and assigned successfully!")
         return redirect('job_list')
         
@@ -798,19 +853,49 @@ def job_update_view(request, pk):
         
         job.save()
         sync_work_location(job.site_name, job.address, job.lat, job.lng, job.geofence_radius, request.user)
-        
+
+        # ── Staff access duration (per-job grant window) ──
+        duration_choice = request.POST.get('duration_choice', '30_DAYS')
+        custom_end_raw = request.POST.get('custom_end_date', '')
+        today = timezone.now().date()
+        custom_end_date = None
+        if custom_end_raw:
+            try:
+                custom_end_date = datetime.datetime.strptime(custom_end_raw, '%Y-%m-%d').date()
+            except ValueError:
+                custom_end_date = None
+        granted_end = JobAssignment.compute_end_date(duration_choice, today, custom_end_date)
+
         new_assigned_staff_ids = request.POST.getlist('assigned_staff')
-        job.assigned_staff.set(User.objects.filter(id__in=new_assigned_staff_ids))
-        
+
+        # Remove grants for staff who were unchecked
+        JobAssignment.objects.filter(job=job).exclude(staff_id__in=new_assigned_staff_ids).delete()
+
+        # Create/refresh grants for currently checked staff — re-saving the
+        # form re-grants access starting today for the chosen duration.
+        for staff_id in new_assigned_staff_ids:
+            JobAssignment.objects.update_or_create(
+                job=job, staff_id=staff_id,
+                defaults={
+                    'duration_label': duration_choice,
+                    'granted_start': today,
+                    'granted_end': granted_end,
+                    'granted_by': request.user,
+                }
+            )
+
         messages.success(request, f"Job '{job.code}' details updated successfully!")
         return redirect('job_list')
-        
+
+    existing_assignment = JobAssignment.objects.filter(job=job).order_by('-created_at').first()
+
     context = {
         'job': job,
         'staff_members': staff_members,
         'work_locations': work_locations,
         'assigned_staff_ids': assigned_staff_ids,
         'instructions': instructions,
+        'existing_assignment': existing_assignment,
         'form_type': 'update'
     }
     return render(request, 'job_form.html', context)

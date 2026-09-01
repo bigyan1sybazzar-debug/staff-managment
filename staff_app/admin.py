@@ -4,7 +4,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from import_export import resources, fields
 from import_export.admin import ImportExportModelAdmin
 from import_export.widgets import ForeignKeyWidget
-from .models import Profile, Job, CheckInRecord, SystemSettings, WorkLocation
+from .models import Profile, Job, CheckInRecord, SystemSettings, WorkLocation, JobAssignment
 
 # ==========================
 # Resource Classes for Import/Export
@@ -91,8 +91,16 @@ class WorkLocationResource(resources.ModelResource):
 
 
 class JobResource(resources.ModelResource):
-    """Resource for importing/exporting Jobs"""
-    
+    """Resource for importing/exporting Jobs.
+
+    NOTE: assigned_staff now goes through JobAssignment (each staff member
+    has their own access-grant window). This field remains safe for
+    EXPORT, but CSV IMPORT of assigned_staff is not supported here — a
+    grant needs a duration too, not just a username. Assign staff (with
+    their access duration) via the Job form or the inline on this admin
+    page instead.
+    """
+
     assigned_staff = fields.Field(
         column_name='assigned_staff',
         attribute='assigned_staff',
@@ -224,15 +232,34 @@ class WorkLocationAdmin(ImportExportModelAdmin):
     raw_id_fields = ('created_by',)
 
 
+class JobAssignmentInline(admin.TabularInline):
+    """Shows/edits each staff member's access-grant window directly on the Job page."""
+    model = JobAssignment
+    extra = 0
+    fields = ('staff', 'duration_label', 'granted_start', 'granted_end', 'granted_by')
+    raw_id_fields = ('staff', 'granted_by')
+
+
 @admin.register(Job)
 class JobAdmin(ImportExportModelAdmin):
     resource_class = JobResource
     list_display = ('code', 'title', 'site_name', 'date', 'start_time', 'end_time', 'status')
     list_filter = ('status', 'date', 'is_adhoc')
     search_fields = ('code', 'title', 'site_name', 'address')
-    filter_horizontal = ('assigned_staff',)
+    # NOTE: assigned_staff now goes through JobAssignment (per-staff grant
+    # window), so filter_horizontal can no longer be used on it. Manage
+    # staff + their access duration via the inline below instead.
+    inlines = [JobAssignmentInline]
     raw_id_fields = ('requested_by',)
     readonly_fields = ('created_at',)
+
+
+@admin.register(JobAssignment)
+class JobAssignmentAdmin(admin.ModelAdmin):
+    list_display = ('job', 'staff', 'duration_label', 'granted_start', 'granted_end', 'is_active_today')
+    list_filter = ('duration_label',)
+    search_fields = ('job__code', 'job__title', 'staff__username')
+    raw_id_fields = ('job', 'staff', 'granted_by')
 
 
 @admin.register(CheckInRecord)
