@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "corsheaders",
+    "import_export",  # ADD THIS - For import/export functionality in admin
     "staff_app",
 ]
 
@@ -153,3 +154,6 @@ LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard"
 LOGOUT_REDIRECT_URL = "login"
 
+# Import-Export Settings
+# https://django-import-export.readthedocs.io/en/latest/configuration.html
+IMPORT_EXPORT_USE_TRANSACTIONS = True  # Use database transactions for imports

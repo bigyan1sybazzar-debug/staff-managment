@@ -92,7 +92,7 @@
                     </div>
                 </div>
 
-                <h5 class="fw-bold text-dark border-bottom pb-2 mb-4">Scheduling & Shifts</h5>
+                <h5 class="fw-bold text-dark border-bottom pb-2 mb-4">Scheduling</h5>
                 
                 <div class="row g-3 mb-4">
                     <div class="col-md-6">
@@ -102,7 +102,6 @@
                     <div class="col-md-6">
                         <label class="form-label fw-semibold text-muted small">Shift Start Time (Required)</label>
                         <input type="time" name="start_time" class="form-control rounded-3" value="{{ job.start_time|time:'H:i'|default:'' }}" required>
-                        <small class="text-muted">End time is assumed as an 8-hour shift from this start time.</small>
                     </div>
                 </div>
 
@@ -209,7 +208,6 @@
         var opt = select.options[select.selectedIndex];
 
         if (!opt.value || opt.value === '__new__') {
-            // Leave fields as-is for manual entry — just focus the site name field
             if (opt.value === '__new__') {
                 document.getElementById('jobSiteName').focus();
             }
@@ -240,7 +238,6 @@
         if (rows.length > 1) {
             button.closest('.instruction-row').remove();
         } else {
-            // just clear the input if it's the last row
             button.closest('.instruction-row').querySelector('input').value = '';
         }
     }
