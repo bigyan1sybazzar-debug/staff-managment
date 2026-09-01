@@ -430,17 +430,17 @@
         .bottom-dock {
             display: none;
             position: fixed;
-            bottom: 16px;
+            bottom: calc(12px + env(safe-area-inset-bottom));
             left: 50%;
             transform: translateX(-50%);
-            width: calc(100% - 32px);
+            width: calc(100% - 24px);
             max-width: 480px;
-            background: rgba(255, 255, 255, 0.70);
-            backdrop-filter: blur(28px) saturate(200%);
-            -webkit-backdrop-filter: blur(28px) saturate(200%);
+            background: var(--lg-bg-strong);
+            backdrop-filter: var(--lg-blur);
+            -webkit-backdrop-filter: var(--lg-blur);
             border-radius: 28px;
             border: 1px solid rgba(255, 255, 255, 0.65);
-            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255,255,255,0.8);
+            box-shadow: 0 8px 32px rgba(184, 134, 11, 0.18), inset 0 1.5px 1px rgba(255,255,255,0.8);
             padding: 6px 10px;
             align-items: center;
             justify-content: space-around;
@@ -455,10 +455,10 @@
             padding: 6px 12px;
             border-radius: 18px;
             text-decoration: none;
-            color: #9ca3af;
+            color: #7a6a3f;
             font-size: 10px;
             font-weight: 600;
-            transition: all 0.25s ease;
+            transition: all 0.2s ease;
             gap: 2px;
             min-width: 56px;
             border: none;
@@ -466,61 +466,90 @@
             cursor: pointer;
         }
         .bottom-dock .dock-item i { font-size: 18px; transition: transform 0.2s; }
-        .bottom-dock .dock-item span { font-size: 9px; letter-spacing: 0.02em; opacity: 0.7; }
-        .bottom-dock .dock-item:hover { color: #6b7280; background: rgba(255,255,255,0.3); }
-        .bottom-dock .dock-item.active { color: var(--gold); background: rgba(212, 175, 55, 0.15); }
-        .bottom-dock .dock-item.active i { transform: scale(1.05); }
-        .bottom-dock .dock-item.active::before {
-            content: '';
-            position: absolute;
-            top: -1px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 20px;
-            height: 3px;
-            background: var(--gold);
-            border-radius: 0 0 4px 4px;
-        }
-        .bottom-dock .dock-item { position: relative; }
+        .bottom-dock .dock-item span { font-size: 10px; letter-spacing: 0.01em; }
+        .bottom-dock .dock-item:hover { color: #5c4a12; background: rgba(212, 175, 55, 0.12); }
+        .bottom-dock .dock-item.active { color: #fff; background: var(--primary-gradient); box-shadow: 0 4px 14px rgba(212, 175, 55, 0.35); }
+        .bottom-dock .dock-item.active i { transform: scale(1.05); color: #fff; }
+        .bottom-dock .dock-item.active span { color: #fff; opacity: 1; font-weight: 700; }
         .bottom-dock .dock-signout { color: #ef4444; }
-        .bottom-dock .dock-signout:hover { background: rgba(239, 68, 68, 0.10); color: #dc2626; }
+        .bottom-dock .dock-signout:hover { background: rgba(239, 68, 68, 0.12); color: #dc2626; }
         .bottom-dock .dock-signout i { font-size: 16px; }
 
         /* ── Responsive ── */
         @media (max-width: 768px) {
-            .staff-nav { padding: 12px 16px; top: 22px; flex-direction: column; align-items: stretch; }
-            .staff-nav .nav-left { justify-content: space-between; width: 100%; }
-            .staff-nav .nav-right { width: 100%; justify-content: flex-end; }
-            .staff-nav .nav-title { font-size: 17px; }
-            .staff-nav .nav-title small { font-size: 12px; }
+            body { padding-bottom: 96px; }
+            .tab-nav { display: none !important; }
+            .staff-nav {
+                padding: 10px 14px;
+                top: 26px;
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .staff-nav .nav-left {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 2px;
+            }
+            .staff-nav .nav-left .brand { font-size: 16px; }
+            .staff-nav .nav-title { font-size: 14px; margin-top: 1px; }
+            .staff-nav .nav-title small { display: none; }
+            .staff-nav .nav-right { gap: 8px; }
+            .staff-nav .nav-right .btn-signout { display: none; /* Accessible via bottom dock */ }
+            .staff-nav .nav-right .btn-add {
+                font-size: 12px;
+                padding: 6px 12px;
+                border-radius: 12px;
+            }
             .bottom-dock { display: flex; }
+            .main-wrap { padding: 12px 12px; }
         }
-        @media (max-width: 600px) {
-            .gps-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        @media (max-width: 575.98px) {
+            .gps-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
             .gps-bar { font-size: 10px; padding: 4px 10px; }
-            .gps-bar .gps-email { max-width: 80px; }
-            .staff-nav .nav-left .brand { font-size: 15px; }
-            .staff-nav .nav-title { font-size: 15px; }
-            .staff-nav .nav-right .btn-add { font-size: 12px; padding: 6px 14px; }
-            .staff-nav .nav-right .btn-signout { font-size: 11px; padding: 4px 10px; }
-            .tab-btn { font-size: 12px; padding: 6px 14px; }
-            .job-card { padding: 14px 16px; }
-            .job-title { font-size: 16px; }
-            .job-time { gap: 6px; font-size: 11px; }
-            .job-actions { flex-direction: column; }
-            .job-actions button { width: 100%; text-align: center; justify-content: center; }
-            .btn-view, .btn-checkin, .btn-checkout, .btn-outrange { padding: 10px 14px; font-size: 13px; }
-            .check-modal { padding: 16px; }
-            .bottom-dock { padding: 4px 6px; width: calc(100% - 16px); bottom: 10px; border-radius: 22px; }
-            .bottom-dock .dock-item { padding: 4px 8px; min-width: 44px; }
-            .bottom-dock .dock-item i { font-size: 16px; }
-            .bottom-dock .dock-item span { font-size: 8px; }
+            .gps-bar .gps-email { max-width: 100px; }
+            
+            .tab-nav { padding: 4px; border-radius: 14px; margin-bottom: 12px; }
+            .tab-btn { font-size: 12px; padding: 6px 12px; }
+            
+            .job-card { padding: 14px; border-radius: 16px; margin-bottom: 10px; }
+            .job-title { font-size: 15px; }
+            .job-site { font-size: 12px; }
+            .job-time { gap: 8px; font-size: 11px; margin-bottom: 10px; }
+            .job-actions {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+                width: 100%;
+            }
+            .job-actions button, .job-actions a {
+                width: 100%;
+                text-align: center;
+                justify-content: center;
+                padding: 8px 10px;
+                font-size: 12px;
+            }
+            .job-actions .btn-view {
+                grid-column: span 1;
+            }
+            .job-actions .btn-checkin,
+            .job-actions .btn-checkout,
+            .job-actions .btn-outrange {
+                grid-column: span 1;
+            }
+
+            .check-modal { padding: 18px 14px; border-radius: 24px 24px 0 0; }
+            .doc-upload-box { padding: 10px 8px; }
+            .doc-preview, .doc-empty { height: 75px; }
         }
-        @media (max-width: 400px) {
+
+        @media (max-width: 380px) {
             .staff-nav .nav-left .brand span { display: none; }
-            .bottom-dock .dock-item { min-width: 38px; padding: 4px 6px; }
-            .bottom-dock .dock-item i { font-size: 14px; }
-            .bottom-dock .dock-item span { display: none; }
+            .bottom-dock .dock-item { min-width: 44px; padding: 4px 6px; }
+            .bottom-dock .dock-item i { font-size: 16px; }
+            .bottom-dock .dock-item span { font-size: 9px; }
         }
     </style>
 </head>
