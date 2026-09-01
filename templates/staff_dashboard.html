@@ -634,12 +634,31 @@
     <!-- ── Jobs Tab ── -->
     <div id="tab-jobs">
         <div class="section-header">
-            <div class="section-title">Today's Work Orders</div>
-            <div class="section-count">{{ total_assigned }} assigned</div>
+            <div>
+                <div class="section-title">Today's Work Orders</div>
+                <div class="section-count">{{ total_assigned }} assigned</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <label for="jobSortSelect" class="d-none d-sm-inline-block text-muted small fw-semibold">Sort:</label>
+                <select id="jobSortSelect" onchange="sortJobCards(this.value)" 
+                    style="font-size:12px; font-weight:600; padding:5px 10px; border-radius:12px; border:1px solid rgba(212,175,55,0.4); background:rgba(255,255,255,0.7); color:#5c4a12; outline:none; cursor:pointer;">
+                    <option value="time">⏱️ Time (Earliest)</option>
+                    <option value="distance">📍 Distance (Closest)</option>
+                    <option value="status">⚡ Status</option>
+                    <option value="title">🔤 Title (A-Z)</option>
+                </select>
+            </div>
         </div>
 
+        <div id="jobsListContainer">
         {% for job in today_jobs %}
-        <div class="job-card" id="card-{{ job.pk }}">
+        <div class="job-card" id="card-{{ job.pk }}"
+            data-job-pk="{{ job.pk }}"
+            data-time="{{ job.start_time|time:'H:i' }}"
+            data-title="{{ job.title|lower }}"
+            data-lat="{{ job.lat }}"
+            data-lng="{{ job.lng }}"
+            data-status="{% if job.completed_checkin %}3{% elif job.active_checkin %}1{% else %}2{% endif %}">
             <div class="job-card-top">
                 <div class="job-badges">
                     <span class="jbadge jbadge-code">{{ job.code }}</span>
@@ -699,7 +718,13 @@
         {% endfor %}
 
         {% for job in upcoming_jobs %}
-        <div class="job-card" id="card-{{ job.pk }}">
+        <div class="job-card" id="card-{{ job.pk }}"
+            data-job-pk="{{ job.pk }}"
+            data-time="{{ job.start_time|time:'H:i' }}"
+            data-title="{{ job.title|lower }}"
+            data-lat="{{ job.lat }}"
+            data-lng="{{ job.lng }}"
+            data-status="{% if job.completed_checkin %}3{% elif job.active_checkin %}1{% else %}2{% endif %}">
             <div class="job-card-top">
                 <div class="job-badges">
                     <span class="jbadge jbadge-code">{{ job.code }}</span>
@@ -768,6 +793,7 @@
             </div>
         </div>
         {% endfor %}
+        </div>
 
         {% if not today_jobs and not upcoming_jobs %}
         <div class="empty-state">
@@ -1470,6 +1496,40 @@
 
     function viewJobDetail(pk,title,site,addr,start,end,radius) {
         alert(title+'\n'+site+'\n'+addr+'\nTime: '+start+' - '+end+'\nRadius: '+radius+'m');
+    }
+
+    // ── Sorting Work Orders ──
+    function sortJobCards(criteria) {
+        var container = document.getElementById('jobsListContainer');
+        if (!container) return;
+        var cards = Array.from(container.querySelectorAll('.job-card'));
+        
+        cards.sort(function(a, b) {
+            if (criteria === 'time') {
+                var tA = a.dataset.time || '';
+                var tB = b.dataset.time || '';
+                return tA.localeCompare(tB);
+            } else if (criteria === 'distance') {
+                var latA = parseFloat(a.dataset.lat) || 0, lngA = parseFloat(a.dataset.lng) || 0;
+                var latB = parseFloat(b.dataset.lat) || 0, lngB = parseFloat(b.dataset.lng) || 0;
+                var distA = haversine(gpsLat, gpsLng, latA, lngA);
+                var distB = haversine(gpsLat, gpsLng, latB, lngB);
+                return distA - distB;
+            } else if (criteria === 'status') {
+                var sA = parseInt(a.dataset.status) || 99;
+                var sB = parseInt(b.dataset.status) || 99;
+                return sA - sB;
+            } else if (criteria === 'title') {
+                var titleA = a.dataset.title || '';
+                var titleB = b.dataset.title || '';
+                return titleA.localeCompare(titleB);
+            }
+            return 0;
+        });
+
+        cards.forEach(function(card) {
+            container.appendChild(card);
+        });
     }
 
     startGPS();
