@@ -10,7 +10,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q
 import json
 import math
-from .models import Profile, Job, CheckInRecord, SystemSettings
+import datetime
+from .models import Profile, Job, CheckInRecord, SystemSettings, WorkLocation
 
 
 def haversine_distance(lat1, lng1, lat2, lng2):
@@ -150,7 +151,7 @@ def staff_dashboard_view(request):
         'today_jobs':     annotate(today_jobs),
         'upcoming_jobs':  annotate(upcoming_jobs),
         'total_assigned': all_assigned.count(),
-        'my_checkins':    CheckInRecord.objects.filter(user=user).order_by('-timestamp').select_related('job')[:30],
+        'my_checkins':    CheckInRecord.objects.filter(user=user).order_by('-timestamp').select_related('job'),
     }
     return render(request, 'staff_dashboard.html', context)
 
@@ -163,18 +164,42 @@ def adhoc_job_create_view(request):
     if request.method != 'POST':
         return redirect('staff_dashboard')
     try:
-        title      = request.POST.get('title', '').strip()
-        site_name  = request.POST.get('site_name', '').strip()
-        address    = request.POST.get('address', '').strip()
-        date       = request.POST.get('date')
-        start_time = request.POST.get('start_time')
-        end_time   = request.POST.get('end_time')
-        notes      = request.POST.get('notes', '').strip()
-        lat        = float(request.POST.get('lat', 0) or 0)
-        lng        = float(request.POST.get('lng', 0) or 0)
+        title       = request.POST.get('title', '').strip()
+        date        = request.POST.get('date')
+        start_time  = request.POST.get('start_time')
+        notes       = request.POST.get('notes', '').strip()
+        lat_in      = float(request.POST.get('lat', 0) or 0)
+        lng_in      = float(request.POST.get('lng', 0) or 0)
 
-        if not title or not site_name or not date or not start_time or not end_time:
-            return JsonResponse({'ok': False, 'error': 'Please fill in all required fields.'}, status=400)
+        location_id       = request.POST.get('location_id', '').strip()
+        new_location_name = request.POST.get('new_location_name', '').strip()
+        new_location_addr = request.POST.get('new_location_address', '').strip()
+
+        if not title or not date or not start_time:
+            return JsonResponse({'ok': False, 'error': 'Please fill in Job Title, Date, and Start Time.'}, status=400)
+
+        # Resolve the location: either an existing saved one, or create a new one now
+        if location_id:
+            try:
+                location = WorkLocation.objects.get(pk=location_id)
+            except WorkLocation.DoesNotExist:
+                return JsonResponse({'ok': False, 'error': 'Selected location was not found.'}, status=400)
+        elif new_location_name:
+            location = WorkLocation.objects.create(
+                name=new_location_name,
+                address=new_location_addr,
+                lat=lat_in,
+                lng=lng_in,
+                geofence_radius=SystemSettings.get_settings().default_geofence_radius,
+                created_by=request.user,
+            )
+        else:
+            return JsonResponse({'ok': False, 'error': 'Please choose a location or add a new one.'}, status=400)
+
+        # No end time required from the staff — assume a standard 8-hour shift
+        start_dt = datetime.datetime.strptime(start_time, '%H:%M')
+        end_dt = start_dt + datetime.timedelta(hours=8)
+        end_time = end_dt.time() if end_dt.day == start_dt.day else datetime.time(23, 59)
 
         settings_obj = SystemSettings.get_settings()
         code = f"ADHOC-{timezone.now().strftime('%Y%m%d%H%M%S')}"
@@ -183,11 +208,11 @@ def adhoc_job_create_view(request):
             title=title,
             code=code,
             description=notes,
-            site_name=site_name,
-            address=address or site_name,
-            lat=lat,
-            lng=lng,
-            geofence_radius=settings_obj.default_geofence_radius,
+            site_name=location.name,
+            address=location.address or location.name,
+            lat=location.lat,
+            lng=location.lng,
+            geofence_radius=location.geofence_radius or settings_obj.default_geofence_radius,
             start_time=start_time,
             end_time=end_time,
             date=date,
@@ -202,6 +227,15 @@ def adhoc_job_create_view(request):
         return JsonResponse({'ok': True, 'job_pk': job.pk})
     except Exception as e:
         return JsonResponse({'ok': False, 'error': str(e)}, status=400)
+
+
+# ==========================
+# Saved Locations API (shared dropdown: Job form + staff Add Manually form)
+# ==========================
+@login_required
+def work_locations_api(request):
+    locations = WorkLocation.objects.all().values('id', 'name', 'address', 'lat', 'lng', 'geofence_radius')
+    return JsonResponse({'locations': list(locations)})
 
 
 # ==========================
@@ -642,9 +676,39 @@ def job_list_view(request):
     }
     return render(request, 'job_list.html', context)
 
+def compute_shift_end_time(start_time_str, hours=8):
+    """Auto-assume a standard shift length since End Time is no longer collected from the form."""
+    start_dt = datetime.datetime.strptime(start_time_str, '%H:%M')
+    end_dt = start_dt + datetime.timedelta(hours=hours)
+    if end_dt.day != start_dt.day:
+        return datetime.time(23, 59)
+    return end_dt.time()
+
+
+def sync_work_location(name, address, lat, lng, geofence_radius, user):
+    """
+    Keep the shared location dropdown (used by both the Job form and the
+    staff 'Add Manually' popup) in sync with whatever site a job is saved
+    with, so admins don't have to manage locations separately.
+    """
+    if not name:
+        return
+    WorkLocation.objects.update_or_create(
+        name=name,
+        defaults={
+            'address': address or '',
+            'lat': lat,
+            'lng': lng,
+            'geofence_radius': geofence_radius,
+            'created_by': user,
+        }
+    )
+
+
 @login_required
 def job_create_view(request):
     staff_members = User.objects.filter(profile__role='STAFF')
+    work_locations = WorkLocation.objects.all()
     
     if request.method == 'POST':
         title = request.POST.get('title')
@@ -657,7 +721,7 @@ def job_create_view(request):
         geofence_radius = int(request.POST.get('geofence_radius', 75))
         
         start_time = request.POST.get('start_time')
-        end_time = request.POST.get('end_time')
+        end_time = compute_shift_end_time(start_time)
         date = request.POST.get('date')
         
         require_selfie = True if request.POST.get('require_selfie') == 'on' else False
@@ -671,7 +735,7 @@ def job_create_view(request):
         
         if Job.objects.filter(code=code).exists():
             messages.error(request, f"Job code '{code}' already exists.")
-            return render(request, 'job_form.html', {'staff_members': staff_members, 'form_type': 'create'})
+            return render(request, 'job_form.html', {'staff_members': staff_members, 'work_locations': work_locations, 'form_type': 'create'})
             
         job = Job.objects.create(
             title=title,
@@ -690,6 +754,7 @@ def job_create_view(request):
             require_checkout=require_checkout,
             status=status
         )
+        sync_work_location(site_name, address, lat, lng, geofence_radius, request.user)
         
         assigned_staff_ids = request.POST.getlist('assigned_staff')
         if assigned_staff_ids:
@@ -698,12 +763,13 @@ def job_create_view(request):
         messages.success(request, f"Job '{code}' created and assigned successfully!")
         return redirect('job_list')
         
-    return render(request, 'job_form.html', {'staff_members': staff_members, 'form_type': 'create'})
+    return render(request, 'job_form.html', {'staff_members': staff_members, 'work_locations': work_locations, 'form_type': 'create'})
 
 @login_required
 def job_update_view(request, pk):
     job = get_object_or_404(Job, pk=pk)
     staff_members = User.objects.filter(profile__role='STAFF')
+    work_locations = WorkLocation.objects.all()
     assigned_staff_ids = list(job.assigned_staff.values_list('id', flat=True))
     
     # Load instructions list
@@ -719,7 +785,7 @@ def job_update_view(request, pk):
         job.geofence_radius = int(request.POST.get('geofence_radius', 75))
         
         job.start_time = request.POST.get('start_time')
-        job.end_time = request.POST.get('end_time')
+        job.end_time = compute_shift_end_time(job.start_time)
         job.date = request.POST.get('date')
         
         job.require_selfie = True if request.POST.get('require_selfie') == 'on' else False
@@ -731,6 +797,7 @@ def job_update_view(request, pk):
         job.instructions_json = json.dumps(instructions)
         
         job.save()
+        sync_work_location(job.site_name, job.address, job.lat, job.lng, job.geofence_radius, request.user)
         
         new_assigned_staff_ids = request.POST.getlist('assigned_staff')
         job.assigned_staff.set(User.objects.filter(id__in=new_assigned_staff_ids))
@@ -741,6 +808,7 @@ def job_update_view(request, pk):
     context = {
         'job': job,
         'staff_members': staff_members,
+        'work_locations': work_locations,
         'assigned_staff_ids': assigned_staff_ids,
         'instructions': instructions,
         'form_type': 'update'

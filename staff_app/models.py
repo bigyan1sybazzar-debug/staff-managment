@@ -42,6 +42,26 @@ def save_user_profile(sender, instance, **kwargs):
 
 
 # ==========================
+# Saved Manual Job Locations
+# (shared dropdown source for Job form + staff Add Manually form)
+# ==========================
+class WorkLocation(models.Model):
+    name = models.CharField(max_length=200, help_text="Short label shown in the dropdown, e.g. 'Thimi Warehouse A'")
+    address = models.CharField(max_length=255, blank=True)
+    lat = models.FloatField()
+    lng = models.FloatField()
+    geofence_radius = models.IntegerField(default=75)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='locations_added')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+# ==========================
 # Job & Work Site Model
 # ==========================
 class Job(models.Model):

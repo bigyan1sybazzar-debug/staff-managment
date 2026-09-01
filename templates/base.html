@@ -17,32 +17,113 @@
         :root {
             --primary-gradient: linear-gradient(135deg, #d4af37 0%, #b8860b 100%);
             --sidebar-width: 260px;
-            --bg-color: #fffdf7;
-            --card-shadow: 0 10px 30px -5px rgba(184, 134, 11, 0.08), 0 5px 15px -8px rgba(184, 134, 11, 0.06);
+            --bg-color: #f4efe0;
+            --glass-bg: rgba(255, 255, 255, 0.55);
+            --glass-bg-strong: rgba(255, 255, 255, 0.72);
+            --glass-border: rgba(255, 255, 255, 0.6);
+            --glass-blur: blur(24px) saturate(180%);
+            --card-shadow: 0 8px 32px rgba(184, 134, 11, 0.10), 0 2px 8px rgba(0, 0, 0, 0.04);
             --transition-speed: 0.3s;
+
+            /* ===== Liquid Glass tokens ===== */
+            --lg-blur: blur(38px) saturate(190%) brightness(1.05);
+            --lg-bg: rgba(255, 255, 255, 0.42);
+            --lg-bg-strong: rgba(255, 255, 255, 0.62);
+            --lg-edge-top: rgba(255, 255, 255, 0.95);
+            --lg-edge-bottom: rgba(255, 255, 255, 0.15);
+            --lg-specular: linear-gradient(120deg, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.18) 32%, rgba(255,255,255,0) 55%, rgba(255,255,255,0.12) 78%, rgba(255,255,255,0.55) 100%);
+            --lg-shadow: 0 1px 1px rgba(255,255,255,0.7) inset, 0 -1px 8px rgba(184,134,11,0.06) inset, 0 20px 45px -12px rgba(120,90,20,0.22), 0 2px 6px rgba(0,0,0,0.04);
+        }
+
+        /* Reusable liquid-glass surface: layered blur + specular sheen + crisp glass edge */
+        .liquid-glass {
+            position: relative;
+            background: var(--lg-bg);
+            backdrop-filter: var(--lg-blur);
+            -webkit-backdrop-filter: var(--lg-blur);
+            border: 1px solid transparent;
+            background-clip: padding-box;
+            box-shadow: var(--lg-shadow);
+            isolation: isolate;
+            overflow: hidden;
+        }
+        .liquid-glass::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            padding: 1px;
+            border-radius: inherit;
+            background: linear-gradient(180deg, var(--lg-edge-top), var(--lg-edge-bottom));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            z-index: 2;
+            opacity: 0.55;
+        }
+        .liquid-glass::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: var(--lg-specular);
+            mix-blend-mode: overlay;
+            opacity: 0.6;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .liquid-glass > * {
+            position: relative;
+            z-index: 3;
         }
 
         body {
             font-family: 'Outfit', sans-serif;
-            background-color: var(--bg-color);
             color: #1e293b;
             min-height: 100vh;
             overflow-x: hidden;
+            background:
+                radial-gradient(circle at 8% 12%, rgba(212, 175, 55, 0.22), transparent 42%),
+                radial-gradient(circle at 92% 18%, rgba(184, 134, 11, 0.16), transparent 45%),
+                radial-gradient(circle at 25% 88%, rgba(255, 223, 130, 0.20), transparent 50%),
+                radial-gradient(circle at 85% 85%, rgba(212, 175, 55, 0.14), transparent 45%),
+                var(--bg-color);
+            background-attachment: fixed;
         }
 
-        /* Sidebar Styles */
+        /* Sidebar Styles — frosted glass panel */
         .sidebar {
             width: var(--sidebar-width);
             height: 100vh;
             position: fixed;
             top: 0;
             left: 0;
-            background: #ffffff;
-            border-right: 1px solid #f0e6cc;
+            background: var(--lg-bg-strong);
+            backdrop-filter: var(--lg-blur);
+            -webkit-backdrop-filter: var(--lg-blur);
+            border-right: 1px solid rgba(255,255,255,0.5);
+            box-shadow: 1px 0 0 rgba(255,255,255,0.6) inset, 4px 0 30px rgba(184, 134, 11, 0.08);
             z-index: 100;
             transition: all var(--transition-speed);
             display: flex;
             flex-direction: column;
+            isolation: isolate;
+            overflow: hidden;
+        }
+
+        .sidebar::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: var(--lg-specular);
+            mix-blend-mode: overlay;
+            opacity: 0.5;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .sidebar > * {
+            position: relative;
+            z-index: 1;
         }
 
         .sidebar-brand {
@@ -50,21 +131,35 @@
             display: flex;
             align-items: center;
             gap: 0.75rem;
-            border-bottom: 1px solid #f8f2e0;
+            border-bottom: 1px solid rgba(240, 230, 204, 0.7);
         }
 
         .brand-logo {
             width: 38px;
             height: 38px;
             background: var(--primary-gradient);
-            border-radius: 10px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
             font-weight: bold;
             font-size: 1.25rem;
-            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.35);
+            box-shadow: 0 4px 16px rgba(212, 175, 55, 0.4), inset 0 1.5px 1px rgba(255,255,255,0.7), inset 0 -8px 10px rgba(0,0,0,0.12);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .brand-logo::after {
+            content: "";
+            position: absolute;
+            top: -60%;
+            left: -20%;
+            width: 140%;
+            height: 90%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.65), rgba(255,255,255,0));
+            border-radius: 50%;
+            pointer-events: none;
         }
 
         .brand-name {
@@ -92,25 +187,35 @@
             padding: 0.85rem 1.25rem;
             color: #7a6a3f;
             text-decoration: none;
-            border-radius: 12px;
+            border-radius: 14px;
             font-weight: 500;
             transition: all 0.2s ease;
         }
 
         .menu-item a:hover {
-            background-color: #fdf6e3;
+            background-color: rgba(253, 246, 227, 0.8);
             color: #5c4a12;
         }
 
         .menu-item.active a {
             background: var(--primary-gradient);
             color: #ffffff;
-            box-shadow: 0 4px 20px -2px rgba(212, 175, 55, 0.4);
+            box-shadow: 0 4px 20px -2px rgba(212, 175, 55, 0.45), inset 0 1.5px 1px rgba(255,255,255,0.65), inset 0 -10px 14px rgba(0,0,0,0.10);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .menu-item.active a::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(120deg, rgba(255,255,255,0.5), transparent 45%);
+            pointer-events: none;
         }
 
         .sidebar-user {
             padding: 1.25rem 1.5rem;
-            border-top: 1px solid #f8f2e0;
+            border-top: 1px solid rgba(240, 230, 204, 0.7);
             display: flex;
             align-items: center;
             gap: 1rem;
@@ -120,9 +225,9 @@
             width: 44px;
             height: 44px;
             border-radius: 50%;
-            background-color: #f1e6c4;
+            background-color: rgba(241, 230, 196, 0.8);
             object-fit: cover;
-            border: 2px solid #fff;
+            border: 2px solid rgba(255,255,255,0.8);
             box-shadow: 0 0 10px rgba(184, 134, 11, 0.15);
         }
 
@@ -155,10 +260,13 @@
             transition: all var(--transition-speed);
         }
 
-        /* Top Navbar */
+        /* Top Navbar — frosted glass */
         .top-navbar {
-            background: #ffffff;
-            border-bottom: 1px solid #f0e6cc;
+            background: var(--lg-bg-strong);
+            backdrop-filter: var(--lg-blur);
+            -webkit-backdrop-filter: var(--lg-blur);
+            border-bottom: 1px solid rgba(255,255,255,0.5);
+            box-shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(184, 134, 11, 0.05);
             padding: 1rem 2rem;
             display: flex;
             align-items: center;
@@ -166,6 +274,23 @@
             position: sticky;
             top: 0;
             z-index: 99;
+            isolation: isolate;
+        }
+
+        .top-navbar::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: var(--lg-specular);
+            mix-blend-mode: overlay;
+            opacity: 0.45;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .top-navbar > * {
+            position: relative;
+            z-index: 1;
         }
 
         .navbar-search {
@@ -177,7 +302,8 @@
         .navbar-search input {
             padding: 0.5rem 1rem 0.5rem 2.5rem;
             border-radius: 20px;
-            border: 1px solid #e8dcae;
+            border: 1px solid rgba(232, 217, 160, 0.9);
+            background: rgba(255,255,255,0.6);
             font-size: 0.9rem;
             width: 100%;
             transition: all 0.2s;
@@ -185,7 +311,8 @@
 
         .navbar-search input:focus {
             border-color: #d4af37;
-            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.18);
+            background: rgba(255,255,255,0.9);
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
             outline: none;
         }
 
@@ -225,37 +352,70 @@
             right: 2px;
         }
 
-        /* Card Customization */
+        /* Card Customization — liquid glass panel */
         .card {
-            border: none;
-            border-radius: 16px;
-            box-shadow: var(--card-shadow);
-            background: #ffffff;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border: 1px solid rgba(255,255,255,0.55);
+            border-radius: 22px;
+            box-shadow: 0 1.5px 1px rgba(255,255,255,0.7) inset, 0 -8px 14px rgba(184,134,11,0.04) inset, var(--card-shadow);
+            background: var(--lg-bg);
+            backdrop-filter: var(--lg-blur);
+            -webkit-backdrop-filter: var(--lg-blur);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+            position: relative;
+            isolation: isolate;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: var(--lg-specular);
+            mix-blend-mode: overlay;
+            opacity: 0.4;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .card > * {
+            position: relative;
+            z-index: 1;
         }
 
         .card-hover:hover {
             transform: translateY(-3px);
-            box-shadow: 0 15px 35px -5px rgba(184, 134, 11, 0.12), 0 5px 20px -8px rgba(184, 134, 11, 0.1);
+            background: var(--lg-bg-strong);
+            box-shadow: 0 1.5px 1px rgba(255,255,255,0.8) inset, 0 20px 45px -10px rgba(184, 134, 11, 0.20), 0 5px 20px -8px rgba(0, 0, 0, 0.07);
         }
 
-        /* Custom buttons */
+        /* Custom buttons — glossy pill */
         .btn-primary-gradient {
             background: var(--primary-gradient);
             color: white;
             border: none;
             font-weight: 500;
             padding: 0.6rem 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.35);
+            border-radius: 14px;
+            box-shadow: 0 4px 20px rgba(212, 175, 55, 0.35), inset 0 1.5px 1px rgba(255,255,255,0.6), inset 0 -10px 14px rgba(0,0,0,0.12);
             transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            isolation: isolate;
+        }
+
+        .btn-primary-gradient::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(120deg, rgba(255,255,255,0.55), transparent 50%);
+            pointer-events: none;
         }
 
         .btn-primary-gradient:hover {
             opacity: 0.95;
             transform: translateY(-1px);
             color: white;
-            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.45);
+            box-shadow: 0 8px 26px rgba(212, 175, 55, 0.45), inset 0 1.5px 1px rgba(255,255,255,0.6), inset 0 -10px 14px rgba(0,0,0,0.12);
         }
 
         /* Micro-animations */
@@ -271,70 +431,224 @@
         /* Footer styling */
         .footer {
             padding: 1.5rem 2rem;
-            background: #ffffff;
-            border-top: 1px solid #f0e6cc;
+            background: var(--lg-bg);
+            backdrop-filter: var(--lg-blur);
+            -webkit-backdrop-filter: var(--lg-blur);
+            border-top: 1px solid rgba(255,255,255,0.5);
             margin-top: auto;
             text-align: center;
             color: #9a8148;
             font-size: 0.9rem;
         }
 
-        /* Alert / message popup theme */
+        /* Alert / message popup theme — glass */
         .alert {
-            border-radius: 14px;
+            border-radius: 16px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
         }
         .alert-info {
-            background-color: #fdf6e3;
+            background-color: rgba(253, 246, 227, 0.85);
             color: #8a6a1f;
-            border: 1px solid #ecdca0;
+            border: 1px solid rgba(236, 220, 160, 0.9);
         }
         .alert-info .btn-close {
             filter: none;
         }
         .alert-success {
-            background-color: #f0fdf4;
+            background-color: rgba(240, 253, 244, 0.85);
             color: #166534;
-            border: 1px solid #bbf7d0;
+            border: 1px solid rgba(187, 247, 208, 0.9);
         }
         .alert-warning {
-            background-color: #fffbeb;
+            background-color: rgba(255, 251, 235, 0.85);
             color: #92400e;
-            border: 1px solid #fde68a;
+            border: 1px solid rgba(253, 230, 138, 0.9);
         }
         .alert-danger, .alert-error {
-            background-color: #fef2f2;
+            background-color: rgba(254, 242, 242, 0.85);
             color: #991b1b;
-            border: 1px solid #fecaca;
+            border: 1px solid rgba(254, 202, 202, 0.9);
         }
 
-        /* Responsive Sidebar Drawer */
+        /* ===== Mobile bottom navigation (Liquid Glass floating pill) ===== */
+        .mobile-bottom-nav {
+            display: none;
+        }
+
+        .mobile-nav-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+            background-color: rgba(241, 230, 196, 0.9);
+            border: 2px solid rgba(255,255,255,0.85);
+            box-shadow: 0 2px 8px rgba(184, 134, 11, 0.2);
+            color: #9a6a00;
+            font-size: 0.8rem;
+        }
+
+        .liquid-dropdown {
+            border: 1px solid rgba(255,255,255,0.6);
+            border-radius: 18px;
+            background: var(--lg-bg-strong);
+            backdrop-filter: var(--lg-blur);
+            -webkit-backdrop-filter: var(--lg-blur);
+            box-shadow: var(--lg-shadow);
+            padding: 0.5rem;
+            min-width: 200px;
+        }
+        .liquid-dropdown .dropdown-header { padding: 0.5rem 0.75rem 0.25rem; }
+        .liquid-dropdown .dropdown-item {
+            border-radius: 12px;
+            padding: 0.55rem 0.75rem;
+        }
+        .liquid-dropdown .dropdown-item:hover {
+            background: rgba(212, 175, 55, 0.12);
+        }
+
+        /* Responsive: hide the desktop sidebar entirely, surface the bottom nav */
         @media (max-width: 991.98px) {
             .sidebar {
-                transform: translateX(-100%);
-                z-index: 1050;
-                box-shadow: 0 0 25px rgba(184, 134, 11, 0.15);
+                display: none;
             }
-            .sidebar.show {
-                transform: translateX(0);
+            .sidebar-overlay {
+                display: none !important;
             }
             .main-wrapper {
                 margin-left: 0 !important;
+                padding-bottom: 96px; /* keep content clear of the floating bottom nav */
             }
             .top-navbar {
                 padding: 0.75rem 1rem;
             }
-            .sidebar-overlay {
-                display: none;
-                position: fixed;
-                inset: 0;
-                background: rgba(0,0,0,0.4);
-                z-index: 1040;
-            }
-            .sidebar-overlay.show {
-                display: block;
-            }
             .navbar-search {
                 max-width: 220px;
+            }
+            .footer {
+                display: none; /* the floating nav owns the bottom safe-area on mobile */
+            }
+
+            /* Page headers (title/description + an action button) stack instead of
+               squeezing side-by-side, which was making the button wrap and overlap
+               the text next to it. */
+            .header-row {
+                flex-wrap: wrap;
+                gap: 0.75rem;
+            }
+            .header-row > div:first-child {
+                flex: 1 1 100%;
+            }
+            .header-row > div:last-child {
+                width: 100%;
+            }
+            .header-row a,
+            .header-row button {
+                width: 100%;
+            }
+
+            .mobile-bottom-nav {
+                display: flex;
+                align-items: center;
+                justify-content: space-around;
+                position: fixed;
+                left: 14px;
+                right: 14px;
+                bottom: calc(14px + env(safe-area-inset-bottom));
+                height: 66px;
+                padding: 0 6px;
+                border-radius: 30px;
+                background: var(--lg-bg-strong);
+                backdrop-filter: var(--lg-blur);
+                -webkit-backdrop-filter: var(--lg-blur);
+                border: 1px solid rgba(255,255,255,0.55);
+                box-shadow: 0 1.5px 1px rgba(255,255,255,0.8) inset, 0 -10px 16px rgba(0,0,0,0.03) inset, 0 18px 40px -8px rgba(120, 90, 20, 0.30), 0 4px 14px rgba(0,0,0,0.08);
+                z-index: 1060;
+                isolation: isolate;
+                overflow: visible;
+            }
+
+            .mobile-bottom-nav::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                border-radius: inherit;
+                background: var(--lg-specular);
+                mix-blend-mode: overlay;
+                opacity: 0.55;
+                pointer-events: none;
+                z-index: 0;
+            }
+
+            .bottom-nav-item {
+                position: relative;
+                z-index: 1;
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 2px;
+                color: #9a8148;
+                text-decoration: none;
+                font-size: 0.62rem;
+                font-weight: 600;
+                letter-spacing: 0.01em;
+                padding: 6px 2px;
+                border-radius: 20px;
+                transition: color 0.2s ease;
+            }
+
+            .bottom-nav-item i {
+                font-size: 1.28rem;
+                line-height: 1;
+            }
+
+            .bottom-nav-item.active {
+                color: #9a6a00;
+            }
+
+            .bottom-nav-item.active i {
+                color: #b8860b;
+            }
+
+            /* Elevated center "home" button, iPhone dock style */
+            .bottom-nav-center {
+                overflow: visible;
+            }
+
+            .bottom-nav-center-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 52px;
+                height: 52px;
+                border-radius: 50%;
+                background: var(--primary-gradient);
+                color: #ffffff;
+                font-size: 1.35rem;
+                transform: translateY(-16px);
+                box-shadow: 0 10px 22px -4px rgba(184, 134, 11, 0.55), inset 0 1.5px 1px rgba(255,255,255,0.7), inset 0 -8px 10px rgba(0,0,0,0.15), 0 0 0 5px rgba(255,255,255,0.65);
+                position: relative;
+                overflow: hidden;
+                transition: transform 0.2s ease;
+            }
+
+            .bottom-nav-center-btn::after {
+                content: "";
+                position: absolute;
+                top: -55%;
+                left: -15%;
+                width: 130%;
+                height: 90%;
+                background: linear-gradient(180deg, rgba(255,255,255,0.65), rgba(255,255,255,0));
+                border-radius: 50%;
+                pointer-events: none;
+            }
+
+            .bottom-nav-item.bottom-nav-center:active .bottom-nav-center-btn,
+            .bottom-nav-item.bottom-nav-center.active .bottom-nav-center-btn {
+                transform: translateY(-18px) scale(1.04);
             }
         }
     </style>
@@ -343,10 +657,7 @@
 <body>
 
     {% if user.is_authenticated %}
-    <!-- Sidebar Overlay -->
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
-
-    <!-- Sidebar -->
+    <!-- Sidebar (desktop only — mobile uses the floating bottom nav) -->
     <div class="sidebar">
         <div class="sidebar-brand">
             <div class="brand-logo"><i class="bi bi-geo-alt-fill"></i></div>
@@ -415,9 +726,6 @@
         <!-- Top Navbar -->
         <div class="top-navbar">
             <div class="d-flex align-items-center flex-grow-1">
-                <button class="btn btn-light border-0 d-lg-none me-2" id="sidebarToggle" type="button">
-                    <i class="bi bi-list fs-4"></i>
-                </button>
                 <div class="navbar-search">
                     <i class="bi bi-search"></i>
                     <input type="text" placeholder="Search staff, sites, tasks...">
@@ -429,9 +737,29 @@
                     <i class="bi bi-bell-fill"></i>
                     <span class="notification-dot"></span>
                 </a>
-                <a href="/admin/" class="action-btn" title="Django Admin Panel">
+                <a href="/admin/" class="action-btn d-none d-lg-inline-block" title="Django Admin Panel">
                     <i class="bi bi-gear-fill"></i>
                 </a>
+
+                <!-- Mobile-only: profile/logout, since the sidebar is desktop-only now -->
+                <div class="dropdown d-lg-none">
+                    <button class="btn border-0 bg-transparent p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        {% if user.profile.avatar %}
+                            <img src="{{ user.profile.avatar.url }}" class="mobile-nav-avatar" alt="Avatar">
+                        {% else %}
+                            <span class="mobile-nav-avatar d-flex align-items-center justify-content-center fw-bold">{{ user.username|slice:":2"|upper }}</span>
+                        {% endif %}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end liquid-dropdown">
+                        <li class="dropdown-header">
+                            <div class="fw-semibold text-dark">{{ user.get_full_name|default:user.username }}</div>
+                            <div class="text-muted small">{{ user.profile.role }}</div>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="/admin/"><i class="bi bi-gear-fill me-2"></i>Admin Panel</a></li>
+                        <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+                    </ul>
+                </div>
             </div>
         </div>
         {% endif %}
@@ -456,28 +784,38 @@
         </footer>
     </div>
 
+    {% if user.is_authenticated %}
+    <!-- Mobile Bottom Navigation — Liquid Glass floating dock -->
+    <nav class="mobile-bottom-nav d-lg-none">
+        <a href="{% url 'map_view' %}" class="bottom-nav-item {% if request.resolver_match.url_name == 'map_view' %}active{% endif %}">
+            <i class="bi bi-map-fill"></i>
+            <span>Map</span>
+        </a>
+        <a href="{% url 'staff_list' %}" class="bottom-nav-item {% if 'staff' in request.path %}active{% endif %}">
+            <i class="bi bi-people-fill"></i>
+            <span>Staff</span>
+        </a>
+        <a href="{% url 'dashboard' %}" class="bottom-nav-item bottom-nav-center {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+            <span class="bottom-nav-center-btn">
+                <i class="bi bi-house-fill"></i>
+            </span>
+        </a>
+        <a href="{% url 'job_list' %}" class="bottom-nav-item {% if 'jobs' in request.path %}active{% endif %}">
+            <i class="bi bi-briefcase-fill"></i>
+            <span>Jobs</span>
+        </a>
+        <a href="{% url 'history' %}" class="bottom-nav-item {% if request.resolver_match.url_name == 'history' %}active{% endif %}">
+            <i class="bi bi-clock-history"></i>
+            <span>History</span>
+        </a>
+    </nav>
+    {% endif %}
+
     <!-- Bootstrap Bundle JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Leaflet JS Map -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     
     {% block extra_js %}{% endblock %}
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var toggleBtn = document.getElementById('sidebarToggle');
-            var sidebar = document.querySelector('.sidebar');
-            var overlay = document.getElementById('sidebarOverlay');
-            
-            if (toggleBtn && sidebar && overlay) {
-                function toggleSidebar() {
-                    sidebar.classList.toggle('show');
-                    overlay.classList.toggle('show');
-                }
-                toggleBtn.addEventListener('click', toggleSidebar);
-                overlay.addEventListener('click', toggleSidebar);
-            }
-        });
-    </script>
 </body>
 </html>

@@ -28,7 +28,7 @@
                     </div>
                     <div class="col-md-4">
                         <label class="form-label fw-semibold text-muted small">Unique Job Code (Required)</label>
-                        <input type="text" name="code" class="form-control rounded-3 fw-mono text-indigo" value="{{ job.code|default:'' }}" required placeholder="e.g. JOB-A101" {% if form_type == 'update' %}readonly{% endif %}>
+                        <input type="text" name="code" class="form-control rounded-3 fw-mono text-gold" value="{{ job.code|default:'' }}" required placeholder="e.g. JOB-A101" {% if form_type == 'update' %}readonly{% endif %}>
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold text-muted small">Job Description</label>
@@ -37,19 +37,40 @@
                 </div>
 
                 <h5 class="fw-bold text-dark border-bottom pb-2 mb-4">Location & Geofencing Parameters</h5>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-muted small d-block">
+                        <i class="bi bi-geo-alt-fill me-1 text-gold"></i>Choose a Saved Location
+                    </label>
+                    <select id="locationDropdown" class="form-select rounded-3" onchange="applyLocationSelection()">
+                        <option value="">— Select a saved location or enter a new one below —</option>
+                        {% for loc in work_locations %}
+                            <option value="{{ loc.id }}"
+                                data-name="{{ loc.name }}"
+                                data-address="{{ loc.address }}"
+                                data-lat="{{ loc.lat }}"
+                                data-lng="{{ loc.lng }}"
+                                data-radius="{{ loc.geofence_radius }}">
+                                {{ loc.name }}
+                            </option>
+                        {% endfor %}
+                        <option value="__new__">+ Enter a brand-new location</option>
+                    </select>
+                    <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Picking a saved location auto-fills the fields below. Any location you save here also becomes available to staff in their "Add Manually" job request.</small>
+                </div>
                 
                 <div class="row g-3 mb-4">
                     <div class="col-md-6">
                         <label class="form-label fw-semibold text-muted small">Site Name (Required)</label>
-                        <input type="text" name="site_name" class="form-control rounded-3" value="{{ job.site_name|default:'' }}" required placeholder="e.g. Thimi Storage Block B">
+                        <input type="text" name="site_name" id="jobSiteName" class="form-control rounded-3" value="{{ job.site_name|default:'' }}" required placeholder="e.g. Thimi Storage Block B">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold text-muted small">Geofence Radius (meters)</label>
-                        <input type="number" name="geofence_radius" class="form-control rounded-3" value="{{ job.geofence_radius|default:75 }}" required>
+                        <input type="number" name="geofence_radius" id="jobRadius" class="form-control rounded-3" value="{{ job.geofence_radius|default:75 }}" required>
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold text-muted small">Physical Address (Required)</label>
-                        <textarea name="address" class="form-control rounded-3" rows="2" required placeholder="Full address details...">{{ job.address|default:'' }}</textarea>
+                        <textarea name="address" id="jobAddress" class="form-control rounded-3" rows="2" required placeholder="Full address details...">{{ job.address|default:'' }}</textarea>
                     </div>
                     
                     <!-- Lat / Lng inputs with detect button -->
@@ -74,17 +95,14 @@
                 <h5 class="fw-bold text-dark border-bottom pb-2 mb-4">Scheduling & Shifts</h5>
                 
                 <div class="row g-3 mb-4">
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label class="form-label fw-semibold text-muted small">Job Date (Required)</label>
                         <input type="date" name="date" class="form-control rounded-3" value="{{ job.date|date:'Y-m-d'|default:'' }}" required>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label class="form-label fw-semibold text-muted small">Shift Start Time (Required)</label>
                         <input type="time" name="start_time" class="form-control rounded-3" value="{{ job.start_time|time:'H:i'|default:'' }}" required>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold text-muted small">Shift End Time (Required)</label>
-                        <input type="time" name="end_time" class="form-control rounded-3" value="{{ job.end_time|time:'H:i'|default:'' }}" required>
+                        <small class="text-muted">End time is assumed as an 8-hour shift from this start time.</small>
                     </div>
                 </div>
 
@@ -176,15 +194,35 @@
 
 <style>
     .form-control:focus, .form-select:focus {
-        border-color: #6366f1 !important;
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+        border-color: #d4af37 !important;
+        box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.18) !important;
     }
     .fw-mono { font-family: monospace; }
+    .text-gold { color: #b8860b; }
 </style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+    function applyLocationSelection() {
+        var select = document.getElementById('locationDropdown');
+        var opt = select.options[select.selectedIndex];
+
+        if (!opt.value || opt.value === '__new__') {
+            // Leave fields as-is for manual entry — just focus the site name field
+            if (opt.value === '__new__') {
+                document.getElementById('jobSiteName').focus();
+            }
+            return;
+        }
+
+        document.getElementById('jobSiteName').value = opt.dataset.name || '';
+        document.getElementById('jobAddress').value = opt.dataset.address || '';
+        document.getElementById('jobLat').value = opt.dataset.lat || '';
+        document.getElementById('jobLng').value = opt.dataset.lng || '';
+        document.getElementById('jobRadius').value = opt.dataset.radius || 75;
+    }
+
     function addInstructionRow() {
         var container = document.getElementById('instructionsContainer');
         var newRow = document.createElement('div');
