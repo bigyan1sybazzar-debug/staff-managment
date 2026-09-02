@@ -152,12 +152,23 @@ def staff_dashboard_view(request):
             job.completed_checkin = completed_checkins.get(job.pk)
         return jobs
 
+    # ── Total duration completed (for the History tab) ──
+    completed_qs = CheckInRecord.objects.filter(
+        user=user, status='COMPLETED', duration_minutes__isnull=False
+    )
+    total_completed_minutes = completed_qs.aggregate(total=Sum('duration_minutes'))['total'] or 0
+    hours, minutes = divmod(int(total_completed_minutes), 60)
+    total_completed_display = f"{hours}h {minutes}m"
+
     context = {
         'today':          today,
         'today_jobs':     annotate(today_jobs),
         'upcoming_jobs':  annotate(upcoming_jobs),
         'total_assigned': all_assigned.count(),
         'my_checkins':    CheckInRecord.objects.filter(user=user).order_by('-timestamp').select_related('job'),
+        'total_completed_minutes': total_completed_minutes,
+        'total_completed_display': total_completed_display,
+        'completed_jobs_count': completed_qs.count(),
     }
     return render(request, 'staff_dashboard.html', context)
 
@@ -228,7 +239,18 @@ def adhoc_job_create_view(request):
             is_adhoc=True,
             requested_by=request.user,
         )
-        job.assigned_staff.add(request.user)
+        # Self-added jobs need a grant window too — default to 30 days
+        # since there's no admin choosing a duration here.
+        grant_start = timezone.now().date()
+        JobAssignment.objects.update_or_create(
+            job=job, staff=request.user,
+            defaults={
+                'duration_label': '30_DAYS',
+                'granted_start': grant_start,
+                'granted_end': JobAssignment.compute_end_date('30_DAYS', grant_start),
+                'granted_by': request.user,
+            }
+        )
 
         return JsonResponse({'ok': True, 'job_pk': job.pk})
     except Exception as e:
@@ -583,6 +605,43 @@ def history_view(request):
     staff_list = User.objects.filter(profile__role='STAFF')
     jobs_list = Job.objects.all()
 
+    # ── Summary period filter (applies to the totals below, and to the
+    # list itself, so "Weekly / 15 Days / Monthly / Custom" always means
+    # exactly what's being summed) ──
+    period = request.GET.get('period', '')
+    period_start_raw = request.GET.get('period_start', '')
+    period_end_raw = request.GET.get('period_end', '')
+
+    today = timezone.now().date()
+    period_start_date = None
+    period_end_date = None
+
+    if period == 'WEEKLY':
+        period_start_date = today - datetime.timedelta(days=7)
+        period_end_date = today
+    elif period == '15_DAYS':
+        period_start_date = today - datetime.timedelta(days=15)
+        period_end_date = today
+    elif period == 'MONTHLY':
+        period_start_date = today - datetime.timedelta(days=30)
+        period_end_date = today
+    elif period == 'CUSTOM':
+        if period_start_raw:
+            try:
+                period_start_date = datetime.datetime.strptime(period_start_raw, '%Y-%m-%d').date()
+            except ValueError:
+                period_start_date = None
+        if period_end_raw:
+            try:
+                period_end_date = datetime.datetime.strptime(period_end_raw, '%Y-%m-%d').date()
+            except ValueError:
+                period_end_date = None
+
+    if period_start_date:
+        checkins = checkins.filter(timestamp__date__gte=period_start_date)
+    if period_end_date:
+        checkins = checkins.filter(timestamp__date__lte=period_end_date)
+
     # ── Completed-job duration totals ──
     # Sum of duration_minutes across all COMPLETED check-ins in the
     # currently filtered set (respects the staff-only restriction above).
@@ -603,6 +662,9 @@ def history_view(request):
         'staff_list': staff_list,
         'jobs_list': jobs_list,
         'is_staff_role': is_staff_role,
+        'period': period,
+        'period_start_raw': period_start_raw,
+        'period_end_raw': period_end_raw,
         'total_completed_minutes': total_completed_minutes,
         'total_completed_display': minutes_to_hm(total_completed_minutes),
         'completed_jobs_count': completed_qs.count(),

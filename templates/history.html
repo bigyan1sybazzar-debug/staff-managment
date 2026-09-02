@@ -57,6 +57,27 @@
         <div class="col-12 col-md-1 align-self-end">
             <button type="submit" class="btn btn-dark w-100 rounded-3 py-2">Filter</button>
         </div>
+
+        <!-- Duration Summary Period -->
+        <div class="col-6 col-md-3">
+            <label class="form-label text-muted small fw-semibold">Duration Summary Period</label>
+            <select name="period" id="periodSelect" class="form-select" onchange="toggleCustomPeriod()">
+                <option value="">All Time</option>
+                <option value="WEEKLY" {% if period == 'WEEKLY' %}selected{% endif %}>Last 7 Days</option>
+                <option value="15_DAYS" {% if period == '15_DAYS' %}selected{% endif %}>Last 15 Days</option>
+                <option value="MONTHLY" {% if period == 'MONTHLY' %}selected{% endif %}>Last 30 Days</option>
+                <option value="CUSTOM" {% if period == 'CUSTOM' %}selected{% endif %}>Custom Range</option>
+            </select>
+            <small class="text-muted">Controls the totals below — and the list above.</small>
+        </div>
+        <div class="col-6 col-md-3" id="periodCustomWrapStart" style="{% if period != 'CUSTOM' %}display:none;{% endif %}">
+            <label class="form-label text-muted small fw-semibold">From</label>
+            <input type="date" name="period_start" class="form-control" value="{{ period_start_raw|default:'' }}">
+        </div>
+        <div class="col-6 col-md-3" id="periodCustomWrapEnd" style="{% if period != 'CUSTOM' %}display:none;{% endif %}">
+            <label class="form-label text-muted small fw-semibold">To</label>
+            <input type="date" name="period_end" class="form-control" value="{{ period_end_raw|default:'' }}">
+        </div>
     </form>
 </div>
 
@@ -146,6 +167,47 @@
             </tbody>
         </table>
     </div>
+</div>
+
+<!-- Total Duration Summary -->
+<div class="card p-4 mb-4" id="totalDurationCard">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+            <h5 class="fw-bold mb-1"><i class="bi bi-clock-history me-2 text-indigo"></i>Total Duration Completed</h5>
+            <p class="text-muted small mb-0">
+                {% if period == 'WEEKLY' %}Last 7 days
+                {% elif period == '15_DAYS' %}Last 15 days
+                {% elif period == 'MONTHLY' %}Last 30 days
+                {% elif period == 'CUSTOM' %}Custom range
+                {% else %}All time
+                {% endif %}
+                — {{ completed_jobs_count }} completed check-in{{ completed_jobs_count|pluralize }} matching the filters above.
+            </p>
+        </div>
+        <div class="text-end">
+            <div class="fw-bold text-indigo" style="font-size: 2rem;">{{ total_completed_display }}</div>
+        </div>
+    </div>
+
+    {% if not is_staff_role and completed_by_staff %}
+    <hr>
+    <div class="small fw-semibold text-muted mb-2">Breakdown by Staff Member</div>
+    <div class="table-responsive">
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr><th>Staff</th><th class="text-end">Total Duration</th></tr>
+            </thead>
+            <tbody>
+                {% for row in completed_by_staff %}
+                <tr>
+                    <td>{{ row.user__first_name|default:row.user__username }} {{ row.user__last_name }}</td>
+                    <td class="text-end fw-semibold">{{ row.total_display }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
 </div>
 
 <!-- Check-In Details & Review Modal -->
@@ -369,6 +431,14 @@
     var detailMapObj = null;
     var detailMarker = null;
     var geofenceCircle = null;
+
+    function toggleCustomPeriod() {
+        var sel = document.getElementById('periodSelect');
+        var isCustom = sel.value === 'CUSTOM';
+        document.getElementById('periodCustomWrapStart').style.display = isCustom ? 'block' : 'none';
+        document.getElementById('periodCustomWrapEnd').style.display = isCustom ? 'block' : 'none';
+    }
+    document.addEventListener('DOMContentLoaded', toggleCustomPeriod);
 
     function viewLogDetails(id) {
         var el = document.getElementById('reviewModal');
