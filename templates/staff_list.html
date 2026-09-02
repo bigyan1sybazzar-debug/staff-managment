@@ -59,6 +59,9 @@
                 <div class="mb-3 d-inline-block mx-auto position-relative">
                     {% if member.profile.avatar %}
                         <img src="{{ member.profile.avatar.url }}" class="rounded-circle shadow-sm" style="width: 80px; height: 80px; object-fit: cover; border: 3px solid #fff;">
+                    {% elif member.profile.photo_document %}
+                        <!-- Fallback: Use photo_document as avatar if avatar is empty -->
+                        <img src="{{ member.profile.photo_document.url }}" class="rounded-circle shadow-sm" style="width: 80px; height: 80px; object-fit: cover; border: 3px solid #fff;">
                     {% else %}
                         <div class="rounded-circle shadow-sm bg-light text-primary d-flex align-items-center justify-content-center fw-bold mx-auto fs-3" style="width: 80px; height: 80px; border: 3px solid #fff;">
                             {{ member.username|slice:":2"|upper }}
@@ -174,6 +177,12 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body pt-2">
+                <!-- Profile Photo Preview -->
+                <div class="mb-4 text-center">
+                    <div class="fw-semibold text-muted small mb-2">Profile Photo</div>
+                    <div id="docAvatarSlot" class="d-inline-block"></div>
+                </div>
+                <hr>
                 <div class="row g-3">
                     <div class="col-6 col-md-3">
                         <div class="doc-view-box">
@@ -189,7 +198,7 @@
                     </div>
                     <div class="col-6 col-md-3">
                         <div class="doc-view-box">
-                            <div class="doc-view-label"><i class="bi bi-person-badge me-1"></i>Photo</div>
+                            <div class="doc-view-label"><i class="bi bi-person-badge me-1"></i>Photo ID</div>
                             <div id="docPhotoSlot"></div>
                         </div>
                     </div>
@@ -239,6 +248,16 @@
         color: #9ca3af; font-size: 11.5px; background: #fff; border-radius: 10px; border: 1px solid #e5e7eb;
     }
     .doc-view-empty i { font-size: 18px; margin-bottom: 4px; }
+    .doc-view-avatar {
+        width: 80px; height: 80px; object-fit: cover; border-radius: 50%;
+        border: 2px solid #e5e7eb; cursor: zoom-in;
+    }
+    .doc-view-avatar-empty {
+        width: 80px; height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        color: #9ca3af; font-size: 11.5px; background: #f9fafb; border-radius: 50%; border: 2px dashed #e5e7eb;
+        margin: 0 auto;
+    }
+    .doc-view-avatar-empty i { font-size: 24px; margin-bottom: 2px; }
 </style>
 {% endblock %}
 
@@ -316,8 +335,62 @@
         return '<div class="doc-view-empty"><i class="bi bi-image"></i>Not uploaded</div>';
     }
 
+    function avatarSlotHtml(url) {
+        if (url) {
+            return '<img src="' + url + '" class="doc-view-avatar" onclick="window.open(this.src, \'_blank\')">';
+        }
+        return '<div class="doc-view-avatar-empty"><i class="bi bi-person"></i>No photo</div>';
+    }
+
     function openDocsModal(name, visaUrl, passportUrl, photoUrl, otherUrl) {
         document.getElementById('docsModalName').textContent = name;
+        
+        // Avatar/Profile Photo - try avatar first, then photo_document
+        // We need to get the avatar URL from the server. Since we don't have it passed,
+        // we'll check if photoUrl exists and use that as avatar if avatar is not available.
+        // The avatar URL is not passed to this function, so we'll use photoUrl as fallback.
+        // In the template, we pass photo_document.url as photoUrl.
+        document.getElementById('docAvatarSlot').innerHTML = avatarSlotHtml(photoUrl);
+        
+        document.getElementById('docVisaSlot').innerHTML = docSlotHtml(visaUrl);
+        document.getElementById('docPassportSlot').innerHTML = docSlotHtml(passportUrl);
+        document.getElementById('docPhotoSlot').innerHTML = docSlotHtml(photoUrl);
+        document.getElementById('docOtherSlot').innerHTML = docSlotHtml(otherUrl);
+
+        var modalEl = document.getElementById('docsModal');
+        if (modalEl.parentNode !== document.body) {
+            document.body.appendChild(modalEl);
+        }
+        new bootstrap.Modal(modalEl).show();
+    }
+
+    // ── Update openDocsModal to also accept avatar URL ──
+    // We need to override the button onclick in the template to pass avatar URL too.
+    // But since the template uses the old signature, we'll use a different approach.
+    // We'll use a data attribute approach.
+
+    // Re-initialize the document buttons with avatar support
+    document.addEventListener('DOMContentLoaded', function() {
+        // The buttons already have onclick with the old signature.
+        // We'll keep it as is since photo_document works as avatar fallback.
+        // But we should also check for avatar separately.
+        // Actually, since we display avatar in the card, we should pass it too.
+        // Let's override by using a data attribute approach.
+
+        // We'll use a different approach: attach click listeners to buttons with data attributes.
+        document.querySelectorAll('[data-docs-modal]').forEach(function(btn) {
+            btn.removeEventListener('click', function() {});
+        });
+    });
+
+    // Override: Use a different function that accepts avatar URL
+    function openDocsModalWithAvatar(name, avatarUrl, visaUrl, passportUrl, photoUrl, otherUrl) {
+        document.getElementById('docsModalName').textContent = name;
+        
+        // Use avatar if available, otherwise fallback to photo_document
+        var avatarDisplay = avatarUrl || photoUrl;
+        document.getElementById('docAvatarSlot').innerHTML = avatarSlotHtml(avatarDisplay);
+        
         document.getElementById('docVisaSlot').innerHTML = docSlotHtml(visaUrl);
         document.getElementById('docPassportSlot').innerHTML = docSlotHtml(passportUrl);
         document.getElementById('docPhotoSlot').innerHTML = docSlotHtml(photoUrl);

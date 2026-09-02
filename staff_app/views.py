@@ -274,17 +274,30 @@ def profile_documents_upload_view(request):
     if request.method == 'POST':
         profile = request.user.profile
 
+        # Profile Avatar (with auto-sync to photo_document)
+        avatar = request.FILES.get('avatar')
+        if avatar:
+            profile.avatar = avatar
+            # Also update photo_document to match (sync)
+            profile.photo_document = avatar
+
+        # Photo ID Document - if uploaded separately, sync to avatar if avatar is empty
+        photo_doc = request.FILES.get('photo_document')
+        if photo_doc:
+            profile.photo_document = photo_doc
+            # If no avatar was uploaded in this request and avatar is empty, use photo_doc as avatar
+            if not avatar and not profile.avatar:
+                profile.avatar = photo_doc
+
+        # Other documents
         visa = request.FILES.get('visa_document')
         passport = request.FILES.get('passport_document')
-        photo = request.FILES.get('photo_document')
         other = request.FILES.get('other_document')
 
         if visa:
             profile.visa_document = visa
         if passport:
             profile.passport_document = passport
-        if photo:
-            profile.photo_document = photo
         if other:
             profile.other_document = other
 
@@ -292,8 +305,6 @@ def profile_documents_upload_view(request):
         messages.success(request, "Documents uploaded successfully.")
 
     return redirect('/my-dashboard/#profile')
-
-
 
 # ==========================
 # Check-In View
@@ -306,6 +317,12 @@ def checkin_view(request, job_pk):
         job = Job.objects.get(pk=job_pk)
     except Job.DoesNotExist:
         return JsonResponse({'ok': False, 'error': f'Job #{job_pk} not found'}, status=404)
+    
+    # 🔴 FIXED: Server-side validation - Prevent check-in for upcoming jobs
+    today = timezone.now().date()
+    if job.date > today:
+        return JsonResponse({'ok': False, 'error': 'This job is scheduled for a future date. You cannot check in yet.'}, status=400)
+    
     try:
         lat      = float(request.POST.get('lat', 0))
         lng      = float(request.POST.get('lng', 0))
@@ -338,9 +355,6 @@ def checkin_view(request, job_pk):
         return JsonResponse({'ok': True, 'record_pk': record.id, 'job_pk': job.pk})
     except Exception as e:
         return JsonResponse({'ok': False, 'error': str(e)}, status=400)
-
-
-
 
 
 # ==========================
@@ -427,6 +441,12 @@ def staff_create_view(request):
         avatar = request.FILES.get('avatar')
         is_active = False if request.POST.get('is_active') == 'off' else True
         
+        # Document uploads
+        visa_doc = request.FILES.get('visa_document')
+        passport_doc = request.FILES.get('passport_document')
+        photo_doc = request.FILES.get('photo_document')
+        other_doc = request.FILES.get('other_document')
+        
         if User.objects.filter(username=username).exists():
             messages.error(request, "Username already exists.")
             return render(request, 'staff_form.html', {
@@ -450,8 +470,25 @@ def staff_create_view(request):
         profile.phone = phone
         profile.department = department
         profile.role = role
+        
+        # If avatar is uploaded, use it
         if avatar:
             profile.avatar = avatar
+            # Also set photo_document to the same image (sync)
+            profile.photo_document = avatar
+        # If no avatar but photo_doc is uploaded, use photo_doc as avatar
+        elif photo_doc:
+            profile.photo_document = photo_doc
+            profile.avatar = photo_doc  # Auto-sync: photo_document becomes avatar
+        
+        # Handle other documents
+        if visa_doc:
+            profile.visa_document = visa_doc
+        if passport_doc:
+            profile.passport_document = passport_doc
+        if other_doc:
+            profile.other_document = other_doc
+            
         profile.save()
         
         messages.success(request, f"Staff member '{username}' created successfully!")
@@ -462,6 +499,9 @@ def staff_create_view(request):
         'page_title': 'Add Staff — StaffTracker',
         'page_heading': '👤 Add New Staff',
     })
+
+
+@login_required
 def staff_update_view(request, pk):
     member = get_object_or_404(User, pk=pk)
 
@@ -502,9 +542,34 @@ def staff_update_view(request, pk):
         profile.department = request.POST.get('department', '')
         profile.role       = request.POST.get('role', 'STAFF')
 
+        # ── Handle file uploads with auto-sync ──
+        
+        # 1. Profile Avatar - This is the primary profile photo
         avatar = request.FILES.get('avatar')
         if avatar:
             profile.avatar = avatar
+            # When avatar is uploaded, also update photo_document to match
+            profile.photo_document = avatar
+        
+        # 2. Photo ID Document - If uploaded separately, sync to avatar if avatar is empty
+        photo_doc = request.FILES.get('photo_document')
+        if photo_doc:
+            profile.photo_document = photo_doc
+            # If no avatar was uploaded in this request and avatar is empty, use photo_doc as avatar
+            if not avatar and not profile.avatar:
+                profile.avatar = photo_doc
+
+        # 3. Other documents
+        visa = request.FILES.get('visa_document')
+        passport = request.FILES.get('passport_document')
+        other_doc = request.FILES.get('other_document')
+
+        if visa:
+            profile.visa_document = visa
+        if passport:
+            profile.passport_document = passport
+        if other_doc:
+            profile.other_document = other_doc
 
         profile.save()
         messages.success(request, f"Staff profile updated successfully!")

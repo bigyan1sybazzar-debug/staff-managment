@@ -80,20 +80,90 @@
                             <option value="SUPER_ADMIN" {% if member.profile.role == 'SUPER_ADMIN' %}selected{% endif %}>Super Admin</option>
                         </select>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold text-muted small">Profile Avatar</label>
-                        {% if member.profile.avatar %}
-                        <div class="d-flex align-items-center gap-3 mb-2">
-                            <img src="{{ member.profile.avatar.url }}" class="rounded-circle border"
-                                style="width: 45px; height: 45px; object-fit: cover;">
-                            <span class="small text-muted">Current Avatar</span>
+                </div>
+
+                <!-- ============================================================ -->
+                <!--  Profile Photo & Documents Section                            -->
+                <!--  Mirrors the staff dashboard document upload style            -->
+                <!-- ============================================================ -->
+                <h5 class="fw-bold text-dark border-bottom pb-2 mb-4">Profile Photo &amp; Documents</h5>
+
+                <div class="row g-3 mb-4">
+                    <!-- Profile Photo (Avatar) - Uses avatar field -->
+                    <div class="col-12">
+                        <div class="doc-upload-box">
+                            <div class="doc-upload-label"><i class="bi bi-person-circle me-1"></i>Profile Photo</div>
+                            {% if member.profile.avatar %}
+                                <img src="{{ member.profile.avatar.url }}" class="doc-preview" style="border-radius: 50%; width: 120px; height: 120px; object-fit: cover; margin: 0 auto;">
+                                <div class="doc-status"><i class="bi bi-check-circle-fill"></i> Uploaded</div>
+                            {% elif member.profile.photo_document %}
+                                <!-- Fallback: Show photo_document as avatar if avatar is empty -->
+                                <img src="{{ member.profile.photo_document.url }}" class="doc-preview" style="border-radius: 50%; width: 120px; height: 120px; object-fit: cover; margin: 0 auto;">
+                                <div class="doc-status" style="color: #f59e0b;"><i class="bi bi-info-circle-fill"></i> Using Photo ID</div>
+                            {% else %}
+                                <div class="doc-empty" style="border-radius: 50%; width: 120px; height: 120px; margin: 0 auto;">
+                                    <i class="bi bi-person" style="font-size: 32px;"></i>
+                                    <span>No photo uploaded</span>
+                                </div>
+                            {% endif %}
+                            <input type="file" name="avatar" accept="image/*" class="doc-file-input">
+                            <small class="text-muted d-block mt-1">Upload a profile photo. This will also set your Photo ID document.</small>
                         </div>
-                        {% endif %}
-                        <input type="file" name="avatar" class="form-control rounded-3">
+                    </div>
+
+                    <!-- Document Uploads (mirroring staff dashboard) -->
+                    <div class="col-6 col-md-3">
+                        <div class="doc-upload-box">
+                            <div class="doc-upload-label"><i class="bi bi-card-heading me-1"></i>Visa</div>
+                            {% if member.profile.visa_document %}
+                                <img src="{{ member.profile.visa_document.url }}" class="doc-preview">
+                                <div class="doc-status"><i class="bi bi-check-circle-fill"></i> Uploaded</div>
+                            {% else %}
+                                <div class="doc-empty"><i class="bi bi-image"></i> No file uploaded</div>
+                            {% endif %}
+                            <input type="file" name="visa_document" accept="image/*" class="doc-file-input">
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="doc-upload-box">
+                            <div class="doc-upload-label"><i class="bi bi-passport me-1"></i>Passport</div>
+                            {% if member.profile.passport_document %}
+                                <img src="{{ member.profile.passport_document.url }}" class="doc-preview">
+                                <div class="doc-status"><i class="bi bi-check-circle-fill"></i> Uploaded</div>
+                            {% else %}
+                                <div class="doc-empty"><i class="bi bi-image"></i> No file uploaded</div>
+                            {% endif %}
+                            <input type="file" name="passport_document" accept="image/*" class="doc-file-input">
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="doc-upload-box">
+                            <div class="doc-upload-label"><i class="bi bi-person-badge me-1"></i>Photo ID</div>
+                            {% if member.profile.photo_document %}
+                                <img src="{{ member.profile.photo_document.url }}" class="doc-preview">
+                                <div class="doc-status"><i class="bi bi-check-circle-fill"></i> Uploaded</div>
+                            {% else %}
+                                <div class="doc-empty"><i class="bi bi-image"></i> No file uploaded</div>
+                            {% endif %}
+                            <input type="file" name="photo_document" accept="image/*" class="doc-file-input">
+                            <small class="text-muted d-block mt-1">Will be used as profile photo if no avatar is set.</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="doc-upload-box">
+                            <div class="doc-upload-label"><i class="bi bi-file-earmark-image me-1"></i>Other</div>
+                            {% if member.profile.other_document %}
+                                <img src="{{ member.profile.other_document.url }}" class="doc-preview">
+                                <div class="doc-status"><i class="bi bi-check-circle-fill"></i> Uploaded</div>
+                            {% else %}
+                                <div class="doc-empty"><i class="bi bi-image"></i> No file uploaded</div>
+                            {% endif %}
+                            <input type="file" name="other_document" accept="image/*" class="doc-file-input">
+                        </div>
                     </div>
                 </div>
 
-                <h5 class="fw-bold text-dark border-bottom pb-2 mb-4">Status & Permissions</h5>
+                <h5 class="fw-bold text-dark border-bottom pb-2 mb-4">Status &amp; Permissions</h5>
 
                 <div class="row g-3 mb-4">
                     <div class="col-12">
@@ -134,6 +204,94 @@
     .form-select:focus {
         border-color: #6366f1 !important;
         box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+    }
+
+    /* ── Document Upload Box Styles (mirroring staff dashboard) ── */
+    .doc-upload-box {
+        border: 1.5px dashed #e5e7eb;
+        border-radius: 14px;
+        padding: 14px;
+        text-align: center;
+        background: #f9fafb;
+        height: 100%;
+        transition: border-color 0.2s ease, background 0.2s ease;
+    }
+    .doc-upload-box:hover {
+        border-color: #d4af37;
+        background: #fdf8ec;
+    }
+    .doc-upload-label {
+        font-size: 12.5px;
+        font-weight: 700;
+        color: #374151;
+        margin-bottom: 8px;
+    }
+    .doc-preview {
+        width: 100%;
+        height: 90px;
+        object-fit: cover;
+        border-radius: 10px;
+        margin-bottom: 6px;
+        border: 1px solid #e5e7eb;
+    }
+    .doc-empty {
+        height: 90px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #9ca3af;
+        font-size: 12px;
+        background: #fff;
+        border-radius: 10px;
+        border: 1px solid #e5e7eb;
+        margin-bottom: 6px;
+    }
+    .doc-empty i {
+        font-size: 20px;
+        margin-bottom: 4px;
+    }
+    .doc-status {
+        font-size: 11px;
+        font-weight: 600;
+        color: #10b981;
+        margin-bottom: 6px;
+    }
+    .doc-file-input {
+        width: 100%;
+        font-size: 11.5px;
+        color: #6b7280;
+    }
+    .doc-file-input::file-selector-button {
+        font-size: 11.5px;
+        font-weight: 600;
+        padding: 5px 12px;
+        border-radius: 20px;
+        border: 1px solid #e8d9a0;
+        background: #fdf6e3;
+        color: #b8860b;
+        cursor: pointer;
+        margin-right: 8px;
+        transition: all 0.2s ease;
+    }
+    .doc-file-input::file-selector-button:hover {
+        background: #f5e6c8;
+        border-color: #d4af37;
+    }
+
+    /* Profile photo special sizing */
+    .doc-upload-box .doc-preview[style*="border-radius: 50%"] {
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+        margin: 0 auto 6px;
+        border-radius: 50% !important;
+    }
+    .doc-upload-box .doc-empty[style*="border-radius: 50%"] {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto 6px;
+        border-radius: 50% !important;
     }
 </style>
 {% endblock %}
