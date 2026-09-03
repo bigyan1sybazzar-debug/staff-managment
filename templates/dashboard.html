@@ -178,7 +178,8 @@
     </div>
     <div class="w-100 w-sm-auto">
         <span class="badge bg-light text-dark border p-2 fw-semibold d-inline-flex align-items-center">
-            <i class="bi bi-clock-history me-1 text-gold"></i> Live Server Time (UTC)
+            <i class="bi bi-clock-history me-1 text-gold"></i> 
+            <span id="liveServerTime">Loading...</span>
         </span>
     </div>
 </div>
@@ -442,6 +443,7 @@
 
 {% block extra_js %}
 <script>
+    
     document.addEventListener("DOMContentLoaded", function() {
         // Initialize Dashboard Map
         var map = L.map('dashboardMap').setView([51.5074, -0.1278], 11);

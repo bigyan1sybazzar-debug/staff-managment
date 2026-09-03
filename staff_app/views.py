@@ -121,19 +121,16 @@ def dashboard_view(request):
 @login_required
 def staff_dashboard_view(request):
     today = timezone.now().date()
-    user  = request.user
+    user = request.user
 
-    # Only jobs where this staff member's admin-granted access window
-    # actually covers today — expired grants simply drop out of the list.
     active_job_ids = JobAssignment.objects.filter(
         staff=user, granted_start__lte=today, granted_end__gte=today
     ).values_list('job_id', flat=True)
 
-    all_assigned  = Job.objects.filter(id__in=active_job_ids)
-    today_jobs    = all_assigned.filter(date=today).order_by('start_time')
-    upcoming_jobs = all_assigned.filter(date__gt=today).order_by('date', 'start_time')
-
-    # Map job_id to active and completed check-in records
+    all_assigned = Job.objects.filter(id__in=active_job_ids)
+    
+    today_jobs_raw = all_assigned.filter(date=today).order_by('start_time')
+    
     user_checkins = CheckInRecord.objects.filter(user=user)
     active_checkins = {}
     completed_checkins = {}
@@ -144,7 +141,6 @@ def staff_dashboard_view(request):
         else:
             completed_checkins[ci.job_id] = ci
 
-    # Attach active/completed check-in info to each job
     def annotate(queryset):
         jobs = list(queryset)
         for job in jobs:
@@ -152,26 +148,53 @@ def staff_dashboard_view(request):
             job.completed_checkin = completed_checkins.get(job.pk)
         return jobs
 
-    # ── Total duration completed (for the History tab) ──
+    annotated_jobs = annotate(today_jobs_raw)
+    
+    # ── Separate into active and completed ──
+    active_today_jobs = []
+    completed_today_jobs = []
+    
+    for job in annotated_jobs:
+        if job.completed_checkin and job.completed_checkin.check_out_timestamp is not None:
+            completed_today_jobs.append(job)
+        else:
+            active_today_jobs.append(job)
+    
+    completed_today_jobs.sort(key=lambda j: j.completed_checkin.check_out_timestamp if j.completed_checkin else j.date)
+    
+    # ── Upcoming jobs ──
+    upcoming_jobs = all_assigned.filter(date__gt=today).order_by('date', 'start_time')
+    upcoming_jobs = annotate(upcoming_jobs)
+
+    # ── History ──
+    thirty_days_ago = timezone.now() - datetime.timedelta(days=30)
+    history_checkins = CheckInRecord.objects.filter(
+        user=user,
+        timestamp__gte=thirty_days_ago
+    ).order_by('-timestamp').select_related('job')
+    
     completed_qs = CheckInRecord.objects.filter(
-        user=user, status='COMPLETED', duration_minutes__isnull=False
+        user=user, 
+        status='COMPLETED', 
+        duration_minutes__isnull=False,
+        timestamp__gte=thirty_days_ago
     )
     total_completed_minutes = completed_qs.aggregate(total=Sum('duration_minutes'))['total'] or 0
     hours, minutes = divmod(int(total_completed_minutes), 60)
     total_completed_display = f"{hours}h {minutes}m"
 
     context = {
-        'today':          today,
-        'today_jobs':     annotate(today_jobs),
-        'upcoming_jobs':  annotate(upcoming_jobs),
+        'today': today,
+        'active_today_jobs': active_today_jobs,      # ← NEW: Active jobs
+        'completed_today_jobs': completed_today_jobs, # ← NEW: Completed jobs
+        'upcoming_jobs': upcoming_jobs,
         'total_assigned': all_assigned.count(),
-        'my_checkins':    CheckInRecord.objects.filter(user=user).order_by('-timestamp').select_related('job'),
+        'my_checkins': history_checkins,
         'total_completed_minutes': total_completed_minutes,
         'total_completed_display': total_completed_display,
         'completed_jobs_count': completed_qs.count(),
     }
     return render(request, 'staff_dashboard.html', context)
-
 
 # ==========================
 # Ad-hoc Job Request (staff self-add, pending admin approval)

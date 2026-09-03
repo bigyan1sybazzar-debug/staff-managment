@@ -114,7 +114,11 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+# ============================================================
+#  TIME ZONE CONFIGURATION
+#  Set to Nepal Time (Asia/Kathmandu) - UTC+5:45
+# ============================================================
+TIME_ZONE = "Asia/Kathmandu"
 
 USE_I18N = True
 

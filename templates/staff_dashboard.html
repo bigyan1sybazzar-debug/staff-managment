@@ -8,6 +8,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         /* ── LIQUID GLASS TOKENS ── */
         :root {
@@ -64,7 +66,7 @@
         .gps-bar .gps-email { margin-left:auto; color:#9ca3af; font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px; }
         .gps-bar .badge-role { font-size:10px; font-weight:700; background:rgba(255,255,255,.12); color:#d1fae5; padding:2px 10px; border-radius:20px; flex-shrink:0; }
 
-        /* ── Top Nav — Liquid Glass (like Staff Directory header) ── */
+        /* ── Top Nav ── */
         .staff-nav {
             background: var(--lg-bg-strong);
             backdrop-filter: var(--lg-blur);
@@ -170,7 +172,7 @@
         }
         .staff-nav .nav-right .btn-signout:hover { background: #fef2f2; }
 
-        /* ── Tab Navigation (like filters row) ── */
+        /* ── Tab Navigation ── */
         .tab-nav {
             background: var(--lg-bg);
             backdrop-filter: var(--lg-blur);
@@ -267,7 +269,7 @@
         .section-title  { font-size:16px; font-weight:700; }
         .section-count  { font-size:13px; color:#6b7280; font-weight:500; }
 
-        /* ── Total Duration Summary (History tab) ── */
+        /* ── Total Duration Summary ── */
         .total-duration-card {
             display: flex;
             justify-content: space-between;
@@ -501,6 +503,285 @@
         .bottom-dock .dock-signout:hover { background: rgba(239, 68, 68, 0.12); color: #dc2626; }
         .bottom-dock .dock-signout i { font-size: 16px; }
 
+        /* ── Job Detail Modal ── */
+        #jobDetailModal .modal-content {
+            border-radius: 24px;
+            background: var(--lg-bg-strong);
+            backdrop-filter: var(--lg-blur);
+            -webkit-backdrop-filter: var(--lg-blur);
+            border: 1px solid rgba(255,255,255,0.6);
+            box-shadow: 0 8px 32px rgba(184, 134, 11, 0.15), 0 2px 8px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+            position: relative;
+            isolation: isolate;
+        }
+        #jobDetailModal .modal-content::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: var(--lg-specular);
+            mix-blend-mode: overlay;
+            opacity: 0.35;
+            pointer-events: none;
+            z-index: 0;
+        }
+        #jobDetailModal .modal-content > * {
+            position: relative;
+            z-index: 1;
+        }
+        #jobDetailModal .modal-header {
+            border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+            padding: 1.25rem 1.5rem;
+            background: rgba(255, 255, 255, 0.15);
+        }
+        #jobDetailModal .modal-header .modal-title {
+            font-weight: 700;
+            color: #1e293b;
+            font-size: 1.25rem;
+        }
+        #jobDetailModal .modal-header .btn-close {
+            filter: none;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        #jobDetailModal .modal-header .btn-close:hover {
+            opacity: 1;
+        }
+        #jobDetailModal .modal-body {
+            padding: 1.5rem;
+        }
+        #jobDetailModal .modal-footer {
+            border-top: 1px solid rgba(212, 175, 55, 0.15);
+            padding: 1rem 1.5rem;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        #jobDetailModal .modal-footer .btn {
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            padding: 0.6rem 1.5rem;
+            transition: all 0.2s ease;
+        }
+        #jobDetailModal .modal-footer .btn-light {
+            border: 1.5px solid #d1d5db;
+            color: #6b7280;
+        }
+        #jobDetailModal .modal-footer .btn-light:hover {
+            background: #f3f4f6;
+            border-color: #9ca3af;
+        }
+        #jobDetailModal .modal-footer .btn-primary-gradient {
+            background: var(--primary-gradient);
+            color: #fff;
+            border: none;
+            box-shadow: 0 4px 20px rgba(212, 175, 55, 0.35);
+        }
+        #jobDetailModal .modal-footer .btn-primary-gradient:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 24px rgba(212, 175, 55, 0.45);
+        }
+
+        /* Detail Info Grid */
+        .detail-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem 1.5rem;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 14px;
+            padding: 0.75rem 1rem;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+        .detail-info-item {
+            padding: 0.4rem 0;
+            border-bottom: 1px solid rgba(0,0,0,0.04);
+        }
+        .detail-info-item:last-child {
+            border-bottom: none;
+        }
+        .detail-info-item .label {
+            font-size: 0.6rem;
+            font-weight: 700;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            display: block;
+            margin-bottom: 1px;
+        }
+        .detail-info-item .value {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-top: 0;
+        }
+        .detail-info-item .value .badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.2rem 0.6rem;
+            border-radius: 16px;
+        }
+
+        /* Detail Job Code Badge */
+        #jobDetailModal #detailJobCode {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            background: rgba(212, 175, 55, 0.12);
+            color: #b8860b;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+        }
+
+        /* Detail Map */
+        #jobDetailMap {
+            height: 260px;
+            width: 100%;
+            border-radius: 16px;
+            border: 1px solid rgba(212, 175, 55, 0.15);
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        /* Detail Instructions */
+        .detail-instruction-item {
+            padding: 0.5rem 0.75rem;
+            background: rgba(212, 175, 55, 0.08);
+            border-radius: 10px;
+            margin-bottom: 0.35rem;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            border: 1px solid rgba(212, 175, 55, 0.08);
+            transition: all 0.2s ease;
+        }
+        .detail-instruction-item:hover {
+            background: rgba(212, 175, 55, 0.14);
+            border-color: rgba(212, 175, 55, 0.15);
+        }
+        .detail-instruction-item i {
+            color: #b8860b;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        /* Detail Assigned Staff */
+        #jobDetailModal #detailAssignedStaff .badge {
+            border-radius: 10px;
+            padding: 0.35rem 0.75rem;
+            font-weight: 600;
+            font-size: 0.8rem;
+            background: rgba(255,255,255,0.6);
+            border: 1px solid rgba(212, 175, 55, 0.15);
+            color: #1e293b;
+            backdrop-filter: blur(4px);
+        }
+        #jobDetailModal #detailAssignedStaff .badge i {
+            color: #b8860b;
+        }
+
+        /* Section Headers in Modal */
+        #jobDetailModal h6.fw-bold {
+            font-size: 0.85rem;
+            color: #374151;
+            margin-bottom: 0.75rem;
+        }
+        #jobDetailModal h6.fw-bold i {
+            font-size: 1rem;
+        }
+
+        /* ── Check-in Activity Styles ── */
+        #checkinActivityContainer {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 14px;
+            padding: 0.5rem 0.75rem;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+        .checkin-activity-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.6rem 0.25rem;
+            border-bottom: 1px solid rgba(0,0,0,0.04);
+        }
+        .checkin-activity-item:last-child {
+            border-bottom: none;
+        }
+        .checkin-activity-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .checkin-activity-icon.checkin-in {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+        }
+        .checkin-activity-icon.checkin-out {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+        .checkin-activity-icon.checkin-duration {
+            background: rgba(212, 175, 55, 0.15);
+            color: #b8860b;
+        }
+        .checkin-activity-details {
+            flex: 1;
+        }
+        .checkin-activity-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .checkin-activity-time {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        .checkin-activity-meta {
+            font-size: 0.7rem;
+            color: #9ca3af;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            flex-wrap: wrap;
+            margin-top: 1px;
+        }
+        .checkin-activity-meta .dot {
+            color: #d1d5db;
+        }
+        .checkin-activity-meta .badge {
+            font-size: 0.6rem;
+            padding: 0.1rem 0.5rem;
+            border-radius: 12px;
+        }
+
+        /* Responsive */
+        @media (max-width: 767.98px) {
+            .detail-info-grid {
+                grid-template-columns: 1fr;
+                gap: 0.25rem;
+                padding: 0.5rem 0.75rem;
+            }
+            .detail-info-item {
+                padding: 0.3rem 0;
+            }
+            .detail-info-item .value {
+                font-size: 0.85rem;
+            }
+            #jobDetailMap {
+                height: 200px;
+            }
+        }
+
         /* ── Responsive ── */
         @media (max-width: 768px) {
             body { padding-bottom: 96px; }
@@ -522,7 +803,7 @@
             .staff-nav .nav-title { font-size: 14px; margin-top: 1px; }
             .staff-nav .nav-title small { display: none; }
             .staff-nav .nav-right { gap: 8px; }
-            .staff-nav .nav-right .btn-signout { display: none; /* Accessible via bottom dock */ }
+            .staff-nav .nav-right .btn-signout { display: none; }
             .staff-nav .nav-right .btn-add {
                 font-size: 12px;
                 padding: 6px 12px;
@@ -530,6 +811,17 @@
             }
             .bottom-dock { display: flex; }
             .main-wrap { padding: 12px 12px; }
+            #jobDetailMap {
+                height: 200px;
+            }
+            #jobDetailModal .modal-footer {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            #jobDetailModal .modal-footer .btn {
+                width: 100%;
+                text-align: center;
+            }
         }
 
         @media (max-width: 575.98px) {
@@ -571,6 +863,7 @@
             .doc-preview, .doc-empty { height: 75px; }
 
             .total-duration-card .tdc-value { font-size: 22px; }
+            #jobDetailMap { height: 180px; }
         }
 
         @media (max-width: 380px) {
@@ -592,7 +885,7 @@
     <span class="badge-role">STAFF</span>
 </div>
 
-<!-- ── Top Nav — Like Staff Directory Header ── -->
+<!-- ── Top Nav ── -->
 <nav class="staff-nav">
     <div class="nav-left">
         <div class="brand">
@@ -659,166 +952,281 @@
         </div>
     </div>
 
-    <!-- ── Jobs Tab ── -->
-    <div id="tab-jobs">
-        <div class="section-header">
-            <div class="section-title">Today's Work Orders</div>
-            <div class="section-count">{{ total_assigned }} assigned</div>
-        </div>
-
-        {% for job in today_jobs %}
-        <div class="job-card" id="card-{{ job.pk }}">
-            <div class="job-card-top">
-                <div class="job-badges">
-                    <span class="jbadge jbadge-code">{{ job.code }}</span>
-                    {% if job.completed_checkin %}
-                        {% if job.completed_checkin.status == 'PENDING_APPROVAL' %}
-                            <span class="jbadge jbadge-pending">⏳ Awaiting Review</span>
-                        {% else %}
-                            <span class="jbadge jbadge-active" style="background:#d1fae5; color:#065f46; border-color:#a7f3d0;">✅ Completed</span>
-                        {% endif %}
-                    {% elif job.active_checkin %}
-                        <span class="jbadge jbadge-active">Checked In</span>
-                    {% else %}
-                        <span class="jbadge jbadge-upcoming">Upcoming</span>
-                    {% endif %}
-                    {% if job.require_selfie %}<span class="jbadge jbadge-selfie"><i class="bi bi-camera me-1"></i>Selfie</span>{% endif %}
-                </div>
-                {% if not job.completed_checkin %}
-                    <div class="zone-badge zone-loading" id="zone-{{ job.pk }}">
-                        <span class="zone-dot zone-dot-out"></span>Checking...
-                    </div>
-                {% endif %}
-            </div>
-            <div class="job-title">{{ job.title }}</div>
-            <div class="job-site"><i class="bi bi-geo-alt me-1" style="color:#ef4444;"></i><strong>{{ job.site_name }}</strong> &mdash; {{ job.address }}</div>
-            <div class="job-time">
-                <span><i class="bi bi-clock me-1"></i>{{ job.start_time|time:"H:i" }} &ndash; {{ job.end_time|time:"H:i" }}</span>
-                <span><i class="bi bi-broadcast me-1"></i>{{ job.geofence_radius }}m radius</span>
-            </div>
-            <div class="job-actions">
-                <button class="btn-view" onclick="viewJobDetail('{{ job.pk }}','{{ job.title }}','{{ job.site_name }}','{{ job.address }}','{{ job.start_time|time:"H:i" }}','{{ job.end_time|time:"H:i" }}','{{ job.geofence_radius }}')">
-                    View <i class="bi bi-chevron-right"></i>
-                </button>
-                {% if job.completed_checkin %}
-                    {% if job.completed_checkin.status == 'PENDING_APPROVAL' %}
-                        <button class="btn-view" disabled style="background:#fffbeb; color:#d97706; border:1px solid #fef08a; font-weight:600; cursor:default; padding: 7px 16px;">
-                            <i class="bi bi-hourglass-split me-1"></i> Awaiting Review
-                        </button>
-                    {% else %}
-                        <button class="btn-view" disabled style="background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; font-weight:600; cursor:default; padding: 7px 16px;">
-                            <i class="bi bi-check-circle-fill me-1"></i> Completed
-                        </button>
-                    {% endif %}
-                {% elif job.active_checkin %}
-                    <button class="btn-checkout" id="btn-{{ job.pk }}"
-                        onclick="openModal('out','{{ job.pk }}','{{ job.title }}','{{ job.lat }}','{{ job.lng }}','{{ job.geofence_radius }}','{{ job.active_checkin.pk }}')">
-                        <i class="bi bi-box-arrow-right"></i> Check Out
-                    </button>
-                {% else %}
-                    <button class="btn-outrange" id="btn-{{ job.pk }}"
-                        data-job="{{ job.pk }}" data-lat="{{ job.lat }}" data-lng="{{ job.lng }}" data-radius="{{ job.geofence_radius }}"
-                        data-title="{{ job.title }}" data-selfie="{{ job.require_selfie }}" data-record=""
-                        data-today="true">
-                        <i class="bi bi-camera me-1"></i>Out of Range
-                    </button>
-                {% endif %}
-            </div>
-        </div>
-        {% endfor %}
-
-        {% for job in upcoming_jobs %}
-        <div class="job-card" id="card-{{ job.pk }}">
-            <div class="job-card-top">
-                <div class="job-badges">
-                    <span class="jbadge jbadge-code">{{ job.code }}</span>
-                    {% if job.completed_checkin %}
-                        {% if job.completed_checkin.status == 'PENDING_APPROVAL' %}
-                            <span class="jbadge jbadge-pending">Awaiting Review</span>
-                        {% else %}
-                            <span class="jbadge jbadge-active" style="background:#d1fae5; color:#065f46; border-color:#a7f3d0;">Completed</span>
-                        {% endif %}
-                    {% elif job.active_checkin %}
-                        <span class="jbadge jbadge-active">Checked In</span>
-                    {% else %}
-                        <span class="jbadge jbadge-upcoming">Upcoming</span>
-                    {% endif %}
-                    {% if job.require_selfie %}<span class="jbadge jbadge-selfie"><i class="bi bi-camera me-1"></i>Selfie</span>{% endif %}
-                </div>
-                {% if job.completed_checkin %}
-                    {% if job.completed_checkin.status == 'PENDING_APPROVAL' %}
-                        <div class="zone-badge zone-out" style="background:#fffbeb; color:#854d0e; border-color:#fef08a;">
-                            <span class="zone-dot zone-dot-out" style="background:#f59e0b;"></span>Awaiting Review
-                        </div>
-                    {% else %}
-                        <div class="zone-badge zone-in" style="background:#d1fae5; color:#065f46; border-color:#a7f3d0;">
-                            <span class="zone-dot zone-dot-in" style="background:#10b981;"></span>Completed
-                        </div>
-                    {% endif %}
-                {% else %}
-                    <!-- FIXED: Upcoming jobs show "Not Available" instead of GPS checking -->
-                    <div class="zone-badge zone-loading" id="zone-{{ job.pk }}" style="opacity: 0.6;">
-                        <span class="zone-dot zone-dot-out"></span>Not Available
-                    </div>
-                {% endif %}
-            </div>
-            <div class="job-title">{{ job.title }}</div>
-            <div class="job-site"><i class="bi bi-geo-alt me-1" style="color:#ef4444;"></i><strong>{{ job.site_name }}</strong> &mdash; {{ job.address }}</div>
-            <div class="job-time">
-                <span><i class="bi bi-clock me-1"></i>{{ job.start_time|time:"H:i" }} &ndash; {{ job.end_time|time:"H:i" }}</span>
-                <span><i class="bi bi-broadcast me-1"></i>{{ job.geofence_radius }}m radius</span>
-                <span style="color:#b8860b; font-weight:600;"><i class="bi bi-calendar me-1"></i>{{ job.date|date:"M j" }}</span>
-            </div>
-            <div class="job-actions">
-                <button class="btn-view" onclick="viewJobDetail('{{ job.pk }}','{{ job.title }}','{{ job.site_name }}','{{ job.address }}','{{ job.start_time|time:"H:i" }}','{{ job.end_time|time:"H:i" }}','{{ job.geofence_radius }}')">
-                    View <i class="bi bi-chevron-right"></i>
-                </button>
-                {% if job.completed_checkin %}
-                    {% if job.completed_checkin.status == 'PENDING_APPROVAL' %}
-                        <button class="btn-view" disabled style="background:#fffbeb; color:#f59e0b; border:1px solid #fcd34d; font-weight:700; cursor:default; padding: 7px 16px;">
-                            <i class="bi bi-hourglass-split me-1"></i> Pending Approval
-                        </button>
-                    {% else %}
-                        <button class="btn-view" disabled style="background:#f3f4f6; color:#10b981; border:1px solid #d1d5db; font-weight:700; cursor:default; padding: 7px 16px;">
-                            <i class="bi bi-check-circle-fill me-1"></i> Completed
-                        </button>
-                    {% endif %}
-                {% elif job.active_checkin %}
-                    <button class="btn-checkout" id="btn-{{ job.pk }}"
-                        onclick="openModal('out','{{ job.pk }}','{{ job.title }}','{{ job.lat }}','{{ job.lng }}','{{ job.geofence_radius }}','{{ job.active_checkin.pk }}')">
-                        <i class="bi bi-box-arrow-right"></i> Check Out
-                    </button>
-                {% else %}
-                    <!-- FIXED: Upcoming jobs show disabled button with start date -->
-                    <button class="btn-outrange" disabled style="background:#f3f4f6; color:#9ca3af; border:1.5px solid #d1d5db; cursor:not-allowed; padding: 7px 16px; display:flex; align-items:center; gap:5px;">
-                        <i class="bi bi-calendar-clock me-1"></i> Starts {{ job.date|date:"M j" }}
-                    </button>
-                {% endif %}
-            </div>
-        </div>
-        {% endfor %}
-
-        {% if not today_jobs and not upcoming_jobs %}
-        <div class="empty-state">
-            <i class="bi bi-calendar-x" style="font-size:48px; display:block; margin-bottom:12px;"></i>
-            <div style="font-size:16px; font-weight:600; color:#374151;">No Shifts Assigned</div>
-            <div style="font-size:13px; margin-top:4px;">Your manager will assign jobs to you soon.</div>
-        </div>
-        {% endif %}
+  <!-- ── Jobs Tab ── -->
+<div id="tab-jobs">
+    <div class="section-header">
+        <div class="section-title">Today's Work Orders</div>
+        <div class="section-count">{{ total_assigned }} assigned</div>
     </div>
 
+    {# 1. FIRST: Active/Upcoming jobs (NOT completed) #}
+    {% for job in active_today_jobs %}
+    <div class="job-card" id="card-{{ job.pk }}">
+        <div class="job-card-top">
+            <div class="job-badges">
+                <span class="jbadge jbadge-code">{{ job.code }}</span>
+                {% if job.active_checkin %}
+                    <span class="jbadge jbadge-active">Checked In</span>
+                {% else %}
+                    <span class="jbadge jbadge-upcoming">Upcoming</span>
+                {% endif %}
+                {% if job.require_selfie %}<span class="jbadge jbadge-selfie"><i class="bi bi-camera me-1"></i>Selfie</span>{% endif %}
+            </div>
+            <div class="zone-badge zone-loading" id="zone-{{ job.pk }}">
+                <span class="zone-dot zone-dot-out"></span>Checking...
+            </div>
+        </div>
+        <div class="job-title">{{ job.title }}</div>
+        <div class="job-site"><i class="bi bi-geo-alt me-1" style="color:#ef4444;"></i><strong>{{ job.site_name }}</strong> &mdash; {{ job.address }}</div>
+        <div class="job-time">
+            <span><i class="bi bi-clock me-1"></i>{{ job.start_time|time:"H:i" }} &ndash; {{ job.end_time|time:"H:i" }}</span>
+            <span><i class="bi bi-broadcast me-1"></i>{{ job.geofence_radius }}m radius</span>
+        </div>
+        <div class="job-actions">
+            <button class="btn-view" onclick="viewJobDetail(
+                '{{ job.pk }}',
+                '{{ job.title|escapejs }}',
+                '{{ job.site_name|escapejs }}',
+                '{{ job.address|escapejs }}',
+                '{{ job.start_time|time:"H:i" }}',
+                '{{ job.end_time|time:"H:i" }}',
+                '{{ job.geofence_radius }}',
+                '{{ job.date|date:"M d, Y" }}',
+                '{{ job.status }}',
+                '{{ job.require_selfie|yesno:"true,false" }}',
+                {{ job.instructions_list|safe }},
+                [{% for staff in job.assigned_staff.all %}'{{ staff.get_full_name|default:staff.username|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+                {{ job.lat|stringformat:"f" }},
+                {{ job.lng|stringformat:"f" }},
+                {
+                    has_checkin: {% if job.active_checkin %}true{% else %}false{% endif %},
+                    checkin_time: '{% if job.active_checkin %}{{ job.active_checkin.timestamp|date:"M d, Y H:i" }}{% endif %}',
+                    checkin_accuracy: '{% if job.active_checkin %}{{ job.active_checkin.accuracy|floatformat:1 }}{% endif %}',
+                    checkin_geofence: {% if job.active_checkin and job.active_checkin.is_inside_geofence %}true{% else %}false{% endif %},
+                    checkin_selfie: {% if job.active_checkin and job.active_checkin.selfie %}true{% else %}false{% endif %},
+                    has_checkout: {% if job.active_checkin and job.active_checkin.check_out_timestamp %}true{% else %}false{% endif %},
+                    checkout_time: '{% if job.active_checkin and job.active_checkin.check_out_timestamp %}{{ job.active_checkin.check_out_timestamp|date:"M d, Y H:i" }}{% endif %}',
+                    checkout_accuracy: '{% if job.active_checkin and job.active_checkin.check_out_accuracy %}{{ job.active_checkin.check_out_accuracy|floatformat:1 }}{% endif %}',
+                    checkout_geofence: false,
+                    checkout_selfie: {% if job.active_checkin and job.active_checkin.check_out_selfie %}true{% else %}false{% endif %},
+                    duration: '{% if job.active_checkin and job.active_checkin.duration_minutes %}{{ job.active_checkin.duration_minutes }} min{% endif %}'
+                }
+            )">
+                View <i class="bi bi-chevron-right"></i>
+            </button>
+            {% if job.active_checkin %}
+                <button class="btn-checkout" id="btn-{{ job.pk }}"
+                    onclick="openModal('out','{{ job.pk }}','{{ job.title }}','{{ job.lat }}','{{ job.lng }}','{{ job.geofence_radius }}','{{ job.active_checkin.pk }}')">
+                    <i class="bi bi-box-arrow-right"></i> Check Out
+                </button>
+            {% else %}
+                <button class="btn-outrange" id="btn-{{ job.pk }}"
+                    data-job="{{ job.pk }}" data-lat="{{ job.lat }}" data-lng="{{ job.lng }}" data-radius="{{ job.geofence_radius }}"
+                    data-title="{{ job.title }}" data-selfie="{{ job.require_selfie }}" data-record=""
+                    data-today="true">
+                    <i class="bi bi-camera me-1"></i>Out of Range
+                </button>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+
+    {# 2. THEN: Completed jobs at the bottom #}
+    {% for job in completed_today_jobs %}
+    <div class="job-card" id="card-{{ job.pk }}">
+        <div class="job-card-top">
+            <div class="job-badges">
+                <span class="jbadge jbadge-code">{{ job.code }}</span>
+                {% if job.completed_checkin.status == 'PENDING_APPROVAL' %}
+                    <span class="jbadge jbadge-pending">⏳ Awaiting Review</span>
+                {% else %}
+                    <span class="jbadge jbadge-active" style="background:#d1fae5; color:#065f46; border-color:#a7f3d0;">✅ Completed</span>
+                {% endif %}
+                {% if job.require_selfie %}<span class="jbadge jbadge-selfie"><i class="bi bi-camera me-1"></i>Selfie</span>{% endif %}
+            </div>
+            <div class="zone-badge zone-in" style="background:#d1fae5; color:#065f46; border-color:#a7f3d0;">
+                <span class="zone-dot zone-dot-in" style="background:#10b981;"></span>
+                {% if job.completed_checkin %}
+                    Completed at {{ job.completed_checkin.check_out_timestamp|date:"H:i" }}
+                {% else %}
+                    Completed
+                {% endif %}
+            </div>
+        </div>
+        <div class="job-title">{{ job.title }}</div>
+        <div class="job-site"><i class="bi bi-geo-alt me-1" style="color:#ef4444;"></i><strong>{{ job.site_name }}</strong> &mdash; {{ job.address }}</div>
+        <div class="job-time">
+            <span><i class="bi bi-clock me-1"></i>{{ job.start_time|time:"H:i" }} &ndash; {{ job.end_time|time:"H:i" }}</span>
+            <span><i class="bi bi-broadcast me-1"></i>{{ job.geofence_radius }}m radius</span>
+            {% if job.completed_checkin %}
+                <span style="color:#10b981; font-weight:600;">
+                    <i class="bi bi-check-circle-fill me-1"></i>
+                    Completed at {{ job.completed_checkin.check_out_timestamp|date:"H:i" }}
+                </span>
+            {% endif %}
+        </div>
+        <div class="job-actions">
+            <button class="btn-view" onclick="viewJobDetail(
+                '{{ job.pk }}',
+                '{{ job.title|escapejs }}',
+                '{{ job.site_name|escapejs }}',
+                '{{ job.address|escapejs }}',
+                '{{ job.start_time|time:"H:i" }}',
+                '{{ job.end_time|time:"H:i" }}',
+                '{{ job.geofence_radius }}',
+                '{{ job.date|date:"M d, Y" }}',
+                '{{ job.status }}',
+                '{{ job.require_selfie|yesno:"true,false" }}',
+                {{ job.instructions_list|safe }},
+                [{% for staff in job.assigned_staff.all %}'{{ staff.get_full_name|default:staff.username|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+                {{ job.lat|stringformat:"f" }},
+                {{ job.lng|stringformat:"f" }},
+                {
+                    has_checkin: true,
+                    checkin_time: '{{ job.completed_checkin.timestamp|date:"M d, Y H:i" }}',
+                    checkin_accuracy: '{{ job.completed_checkin.accuracy|floatformat:1 }}',
+                    checkin_geofence: {{ job.completed_checkin.is_inside_geofence|yesno:"true,false" }},
+                    checkin_selfie: {% if job.completed_checkin.selfie %}true{% else %}false{% endif %},
+                    has_checkout: {% if job.completed_checkin.check_out_timestamp %}true{% else %}false{% endif %},
+                    checkout_time: '{% if job.completed_checkin.check_out_timestamp %}{{ job.completed_checkin.check_out_timestamp|date:"M d, Y H:i" }}{% endif %}',
+                    checkout_accuracy: '{% if job.completed_checkin.check_out_accuracy %}{{ job.completed_checkin.check_out_accuracy|floatformat:1 }}{% endif %}',
+                    checkout_geofence: false,
+                    checkout_selfie: {% if job.completed_checkin.check_out_selfie %}true{% else %}false{% endif %},
+                    duration: '{% if job.completed_checkin.duration_minutes %}{{ job.completed_checkin.duration_minutes }} min{% endif %}'
+                }
+            )">
+                View <i class="bi bi-chevron-right"></i>
+            </button>
+            <button class="btn-view" disabled style="background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; font-weight:600; cursor:default; padding: 7px 16px;">
+                <i class="bi bi-check-circle-fill me-1"></i> Completed
+            </button>
+        </div>
+    </div>
+    {% endfor %}
+
+    {# 3. Upcoming jobs (future dates) #}
+    {% for job in upcoming_jobs %}
+    <div class="job-card" id="card-{{ job.pk }}">
+        <div class="job-card-top">
+            <div class="job-badges">
+                <span class="jbadge jbadge-code">{{ job.code }}</span>
+                {% if job.completed_checkin %}
+                    {% if job.completed_checkin.status == 'PENDING_APPROVAL' %}
+                        <span class="jbadge jbadge-pending">Awaiting Review</span>
+                    {% else %}
+                        <span class="jbadge jbadge-active" style="background:#d1fae5; color:#065f46; border-color:#a7f3d0;">Completed</span>
+                    {% endif %}
+                {% elif job.active_checkin %}
+                    <span class="jbadge jbadge-active">Checked In</span>
+                {% else %}
+                    <span class="jbadge jbadge-upcoming">Upcoming</span>
+                {% endif %}
+                {% if job.require_selfie %}<span class="jbadge jbadge-selfie"><i class="bi bi-camera me-1"></i>Selfie</span>{% endif %}
+            </div>
+            {% if job.completed_checkin %}
+                {% if job.completed_checkin.status == 'PENDING_APPROVAL' %}
+                    <div class="zone-badge zone-out" style="background:#fffbeb; color:#854d0e; border-color:#fef08a;">
+                        <span class="zone-dot zone-dot-out" style="background:#f59e0b;"></span>Awaiting Review
+                    </div>
+                {% else %}
+                    <div class="zone-badge zone-in" style="background:#d1fae5; color:#065f46; border-color:#a7f3d0;">
+                        <span class="zone-dot zone-dot-in" style="background:#10b981;"></span>Completed
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="zone-badge zone-loading" id="zone-{{ job.pk }}" style="opacity: 0.6;">
+                    <span class="zone-dot zone-dot-out"></span>Not Available
+                </div>
+            {% endif %}
+        </div>
+        <div class="job-title">{{ job.title }}</div>
+        <div class="job-site"><i class="bi bi-geo-alt me-1" style="color:#ef4444;"></i><strong>{{ job.site_name }}</strong> &mdash; {{ job.address }}</div>
+        <div class="job-time">
+            <span><i class="bi bi-clock me-1"></i>{{ job.start_time|time:"H:i" }} &ndash; {{ job.end_time|time:"H:i" }}</span>
+            <span><i class="bi bi-broadcast me-1"></i>{{ job.geofence_radius }}m radius</span>
+            <span style="color:#b8860b; font-weight:600;"><i class="bi bi-calendar me-1"></i>{{ job.date|date:"M j" }}</span>
+        </div>
+        <div class="job-actions">
+            <button class="btn-view" onclick="viewJobDetail(
+                '{{ job.pk }}',
+                '{{ job.title|escapejs }}',
+                '{{ job.site_name|escapejs }}',
+                '{{ job.address|escapejs }}',
+                '{{ job.start_time|time:"H:i" }}',
+                '{{ job.end_time|time:"H:i" }}',
+                '{{ job.geofence_radius }}',
+                '{{ job.date|date:"M d, Y" }}',
+                '{{ job.status }}',
+                '{{ job.require_selfie|yesno:"true,false" }}',
+                {{ job.instructions_list|safe }},
+                [{% for staff in job.assigned_staff.all %}'{{ staff.get_full_name|default:staff.username|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+                {{ job.lat|stringformat:"f" }},
+                {{ job.lng|stringformat:"f" }},
+                {
+                    has_checkin: {% if job.active_checkin or job.completed_checkin %}true{% else %}false{% endif %},
+                    checkin_time: '{% if job.active_checkin %}{{ job.active_checkin.timestamp|date:"M d, Y H:i" }}{% elif job.completed_checkin %}{{ job.completed_checkin.timestamp|date:"M d, Y H:i" }}{% endif %}',
+                    checkin_accuracy: '{% if job.active_checkin %}{{ job.active_checkin.accuracy|floatformat:1 }}{% elif job.completed_checkin %}{{ job.completed_checkin.accuracy|floatformat:1 }}{% endif %}',
+                    checkin_geofence: {% if job.active_checkin and job.active_checkin.is_inside_geofence %}true{% elif job.completed_checkin and job.completed_checkin.is_inside_geofence %}true{% else %}false{% endif %},
+                    checkin_selfie: {% if job.active_checkin and job.active_checkin.selfie %}true{% elif job.completed_checkin and job.completed_checkin.selfie %}true{% else %}false{% endif %},
+                    has_checkout: {% if job.active_checkin and job.active_checkin.check_out_timestamp %}true{% elif job.completed_checkin and job.completed_checkin.check_out_timestamp %}true{% else %}false{% endif %},
+                    checkout_time: '{% if job.active_checkin and job.active_checkin.check_out_timestamp %}{{ job.active_checkin.check_out_timestamp|date:"M d, Y H:i" }}{% elif job.completed_checkin and job.completed_checkin.check_out_timestamp %}{{ job.completed_checkin.check_out_timestamp|date:"M d, Y H:i" }}{% endif %}',
+                    checkout_accuracy: '{% if job.active_checkin and job.active_checkin.check_out_accuracy %}{{ job.active_checkin.check_out_accuracy|floatformat:1 }}{% elif job.completed_checkin and job.completed_checkin.check_out_accuracy %}{{ job.completed_checkin.check_out_accuracy|floatformat:1 }}{% endif %}',
+                    checkout_geofence: false,
+                    checkout_selfie: {% if job.active_checkin and job.active_checkin.check_out_selfie %}true{% elif job.completed_checkin and job.completed_checkin.check_out_selfie %}true{% else %}false{% endif %},
+                    duration: '{% if job.active_checkin and job.active_checkin.duration_minutes %}{{ job.active_checkin.duration_minutes }} min{% elif job.completed_checkin and job.completed_checkin.duration_minutes %}{{ job.completed_checkin.duration_minutes }} min{% endif %}'
+                }
+            )">
+                View <i class="bi bi-chevron-right"></i>
+            </button>
+            {% if job.completed_checkin %}
+                {% if job.completed_checkin.status == 'PENDING_APPROVAL' %}
+                    <button class="btn-view" disabled style="background:#fffbeb; color:#f59e0b; border:1px solid #fcd34d; font-weight:700; cursor:default; padding: 7px 16px;">
+                        <i class="bi bi-hourglass-split me-1"></i> Pending Approval
+                    </button>
+                {% else %}
+                    <button class="btn-view" disabled style="background:#f3f4f6; color:#10b981; border:1px solid #d1d5db; font-weight:700; cursor:default; padding: 7px 16px;">
+                        <i class="bi bi-check-circle-fill me-1"></i> Completed
+                    </button>
+                {% endif %}
+            {% elif job.active_checkin %}
+                <button class="btn-checkout" id="btn-{{ job.pk }}"
+                    onclick="openModal('out','{{ job.pk }}','{{ job.title }}','{{ job.lat }}','{{ job.lng }}','{{ job.geofence_radius }}','{{ job.active_checkin.pk }}')">
+                    <i class="bi bi-box-arrow-right"></i> Check Out
+                </button>
+            {% else %}
+                <button class="btn-outrange" disabled style="background:#f3f4f6; color:#9ca3af; border:1.5px solid #d1d5db; cursor:not-allowed; padding: 7px 16px; display:flex; align-items:center; gap:5px;">
+                    <i class="bi bi-calendar-clock me-1"></i> Starts {{ job.date|date:"M j" }}
+                </button>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+
+    {% if not active_today_jobs and not completed_today_jobs and not upcoming_jobs %}
+    <div class="empty-state">
+        <i class="bi bi-calendar-x" style="font-size:48px; display:block; margin-bottom:12px;"></i>
+        <div style="font-size:16px; font-weight:600; color:#374151;">No Shifts Assigned</div>
+        <div style="font-size:13px; margin-top:4px;">Your manager will assign jobs to you soon.</div>
+    </div>
+    {% endif %}
+</div>
     <!-- ── History Tab ── -->
     <div id="tab-history" style="display:none;">
         <div class="section-header">
             <div class="section-title">History</div>
-            <div class="section-count">{{ my_checkins|length }} records</div>
+            <div class="section-count">
+                {{ my_checkins|length }} records 
+                <small class="text-muted" style="font-weight: 400; font-size: 0.75rem;">
+                    (last 30 days)
+                </small>
+            </div>
         </div>
 
         <!-- Total Duration Summary -->
         <div class="gps-card total-duration-card">
             <div class="tdc-label">
                 <i class="bi bi-clock-history me-1" style="color:#b8860b;"></i>Total Duration Completed
-                <small>{{ completed_jobs_count }} completed check-in{{ completed_jobs_count|pluralize }}</small>
+                <small>{{ completed_jobs_count }} completed check-in{{ completed_jobs_count|pluralize }} in last 30 days</small>
             </div>
             <div class="tdc-value">{{ total_completed_display }}</div>
         </div>
@@ -871,140 +1279,139 @@
     </div>
 
     <!-- ── Profile Tab ── -->
- <!-- ── Profile Tab ── -->
-<div id="tab-profile" style="display:none;">
-    <div class="section-header">
-        <div class="section-title">My Profile</div>
-    </div>
-    
-    <div class="gps-card">
-        <!-- Profile Header with Avatar -->
-        <div class="d-flex align-items-center gap-4 mb-3">
-            <!-- Avatar -->
-            <div class="flex-shrink-0">
-                {% if request.user.profile.avatar %}
-                    <img src="{{ request.user.profile.avatar.url }}" 
-                         class="rounded-circle border" 
-                         style="width: 80px; height: 80px; object-fit: cover; border: 3px solid #d4af37 !important;">
-                {% elif request.user.profile.photo_document %}
-                    <img src="{{ request.user.profile.photo_document.url }}" 
-                         class="rounded-circle border" 
-                         style="width: 80px; height: 80px; object-fit: cover; border: 3px solid #d4af37 !important;">
-                {% else %}
-                    <div class="rounded-circle bg-light d-flex align-items-center justify-content-center fw-bold" 
-                         style="width: 80px; height: 80px; border: 3px solid #d4af37; font-size: 28px; color: #b8860b;">
-                        {{ request.user.username|slice:":2"|upper }}
-                    </div>
-                {% endif %}
-            </div>
-            
-            <!-- User Info -->
-            <div>
-                <div style="font-size: 20px; font-weight: 700; color: #1e293b;">{{ request.user.get_full_name|default:request.user.username }}</div>
-                <div style="color: #6b7280; font-size: 14px; margin-top: 2px;">
-                    <i class="bi bi-envelope me-1"></i>{{ request.user.email }}
-                </div>
-                <div class="jbadge jbadge-upcoming mt-2 d-inline-block">{{ request.user.profile.get_role_display }}</div>
-                <div style="color: #6b7280; font-size: 13px; margin-top: 6px;">
-                    <i class="bi bi-phone me-1"></i>{{ request.user.profile.phone|default:"No phone" }}
-                </div>
-                <div style="color: #6b7280; font-size: 13px; margin-top: 2px;">
-                    <i class="bi bi-building me-1"></i>{{ request.user.profile.department|default:"No department" }}
-                </div>
-            </div>
+    <div id="tab-profile" style="display:none;">
+        <div class="section-header">
+            <div class="section-title">My Profile</div>
         </div>
         
-        <hr>
-        <a href="/logout/" style="color:#ef4444; font-size:13px; font-weight:600; text-decoration:none;">
-            <i class="bi bi-box-arrow-right me-1"></i>Sign Out
-        </a>
-    </div>
-
-    <div class="section-header mt-4">
-        <div class="section-title">My Documents</div>
-    </div>
-    
-    <div class="gps-card">
-        <p class="text-muted small mb-3">Upload clear photos or scans of your documents below. Uploading a new file replaces the previous one for that field.</p>
-        <form method="POST" action="{% url 'profile_documents_upload' %}" enctype="multipart/form-data">
-            {% csrf_token %}
-            <div class="row g-3">
-                <!-- Profile Photo Upload -->
-                <div class="col-12">
-                    <div class="doc-upload-box">
-                        <div class="doc-upload-label"><i class="bi bi-person-circle me-1"></i>Profile Photo</div>
-                        {% if request.user.profile.avatar %}
-                            <img src="{{ request.user.profile.avatar.url }}" class="doc-preview" style="border-radius: 50%; width: 120px; height: 120px; object-fit: cover; margin: 0 auto;">
-                            <div class="doc-status"><i class="bi bi-check-circle-fill"></i> Uploaded</div>
-                        {% elif request.user.profile.photo_document %}
-                            <img src="{{ request.user.profile.photo_document.url }}" class="doc-preview" style="border-radius: 50%; width: 120px; height: 120px; object-fit: cover; margin: 0 auto;">
-                            <div class="doc-status" style="color: #f59e0b;"><i class="bi bi-info-circle-fill"></i> Using Photo ID</div>
-                        {% else %}
-                            <div class="doc-empty" style="border-radius: 50%; width: 120px; height: 120px; margin: 0 auto;">
-                                <i class="bi bi-person" style="font-size: 32px;"></i>
-                                <span>No photo uploaded</span>
-                            </div>
-                        {% endif %}
-                        <input type="file" name="avatar" accept="image/*" class="doc-file-input">
-                        <small class="text-muted d-block mt-1">Upload a profile photo. This will also update your Photo ID document.</small>
-                    </div>
+        <div class="gps-card">
+            <!-- Profile Header with Avatar -->
+            <div class="d-flex align-items-center gap-4 mb-3">
+                <!-- Avatar -->
+                <div class="flex-shrink-0">
+                    {% if request.user.profile.avatar %}
+                        <img src="{{ request.user.profile.avatar.url }}" 
+                             class="rounded-circle border" 
+                             style="width: 80px; height: 80px; object-fit: cover; border: 3px solid #d4af37 !important;">
+                    {% elif request.user.profile.photo_document %}
+                        <img src="{{ request.user.profile.photo_document.url }}" 
+                             class="rounded-circle border" 
+                             style="width: 80px; height: 80px; object-fit: cover; border: 3px solid #d4af37 !important;">
+                    {% else %}
+                        <div class="rounded-circle bg-light d-flex align-items-center justify-content-center fw-bold" 
+                             style="width: 80px; height: 80px; border: 3px solid #d4af37; font-size: 28px; color: #b8860b;">
+                            {{ request.user.username|slice:":2"|upper }}
+                        </div>
+                    {% endif %}
                 </div>
                 
-                <!-- Document Uploads -->
-                <div class="col-6 col-md-3">
-                    <div class="doc-upload-box">
-                        <div class="doc-upload-label"><i class="bi bi-card-heading me-1"></i>Visa</div>
-                        {% if request.user.profile.visa_document %}
-                            <img src="{{ request.user.profile.visa_document.url }}" class="doc-preview">
-                            <div class="doc-status"><i class="bi bi-check-circle-fill"></i> Uploaded</div>
-                        {% else %}
-                            <div class="doc-empty"><i class="bi bi-image"></i> No file uploaded</div>
-                        {% endif %}
-                        <input type="file" name="visa_document" accept="image/*" class="doc-file-input">
+                <!-- User Info -->
+                <div>
+                    <div style="font-size: 20px; font-weight: 700; color: #1e293b;">{{ request.user.get_full_name|default:request.user.username }}</div>
+                    <div style="color: #6b7280; font-size: 14px; margin-top: 2px;">
+                        <i class="bi bi-envelope me-1"></i>{{ request.user.email }}
                     </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="doc-upload-box">
-                        <div class="doc-upload-label"><i class="bi bi-passport me-1"></i>Passport</div>
-                        {% if request.user.profile.passport_document %}
-                            <img src="{{ request.user.profile.passport_document.url }}" class="doc-preview">
-                            <div class="doc-status"><i class="bi bi-check-circle-fill"></i> Uploaded</div>
-                        {% else %}
-                            <div class="doc-empty"><i class="bi bi-image"></i> No file uploaded</div>
-                        {% endif %}
-                        <input type="file" name="passport_document" accept="image/*" class="doc-file-input">
+                    <div class="jbadge jbadge-upcoming mt-2 d-inline-block">{{ request.user.profile.get_role_display }}</div>
+                    <div style="color: #6b7280; font-size: 13px; margin-top: 6px;">
+                        <i class="bi bi-phone me-1"></i>{{ request.user.profile.phone|default:"No phone" }}
                     </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="doc-upload-box">
-                        <div class="doc-upload-label"><i class="bi bi-person-badge me-1"></i>Photo ID</div>
-                        {% if request.user.profile.photo_document %}
-                            <img src="{{ request.user.profile.photo_document.url }}" class="doc-preview">
-                            <div class="doc-status"><i class="bi bi-check-circle-fill"></i> Uploaded</div>
-                        {% else %}
-                            <div class="doc-empty"><i class="bi bi-image"></i> No file uploaded</div>
-                        {% endif %}
-                        <input type="file" name="photo_document" accept="image/*" class="doc-file-input">
-                        <small class="text-muted d-block mt-1">Will be used as profile photo if no avatar is set.</small>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="doc-upload-box">
-                        <div class="doc-upload-label"><i class="bi bi-file-earmark-image me-1"></i>Other</div>
-                        {% if request.user.profile.other_document %}
-                            <img src="{{ request.user.profile.other_document.url }}" class="doc-preview">
-                            <div class="doc-status"><i class="bi bi-check-circle-fill"></i> Uploaded</div>
-                        {% else %}
-                            <div class="doc-empty"><i class="bi bi-image"></i> No file uploaded</div>
-                        {% endif %}
-                        <input type="file" name="other_document" accept="image/*" class="doc-file-input">
+                    <div style="color: #6b7280; font-size: 13px; margin-top: 2px;">
+                        <i class="bi bi-building me-1"></i>{{ request.user.profile.department|default:"No department" }}
                     </div>
                 </div>
             </div>
-            <button type="submit" class="btn-primary-modal mt-3">
-                <i class="bi bi-cloud-upload-fill me-2"></i>Save Documents
-            </button>
-        </form>
+            
+            <hr>
+            <a href="/logout/" style="color:#ef4444; font-size:13px; font-weight:600; text-decoration:none;">
+                <i class="bi bi-box-arrow-right me-1"></i>Sign Out
+            </a>
+        </div>
+
+        <div class="section-header mt-4">
+            <div class="section-title">My Documents</div>
+        </div>
+        
+        <div class="gps-card">
+            <p class="text-muted small mb-3">Upload clear photos or scans of your documents below. Uploading a new file replaces the previous one for that field.</p>
+            <form method="POST" action="{% url 'profile_documents_upload' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <!-- Profile Photo Upload -->
+                    <div class="col-12">
+                        <div class="doc-upload-box">
+                            <div class="doc-upload-label"><i class="bi bi-person-circle me-1"></i>Profile Photo</div>
+                            {% if request.user.profile.avatar %}
+                                <img src="{{ request.user.profile.avatar.url }}" class="doc-preview" style="border-radius: 50%; width: 120px; height: 120px; object-fit: cover; margin: 0 auto;">
+                                <div class="doc-status"><i class="bi bi-check-circle-fill"></i> Uploaded</div>
+                            {% elif request.user.profile.photo_document %}
+                                <img src="{{ request.user.profile.photo_document.url }}" class="doc-preview" style="border-radius: 50%; width: 120px; height: 120px; object-fit: cover; margin: 0 auto;">
+                                <div class="doc-status" style="color: #f59e0b;"><i class="bi bi-info-circle-fill"></i> Using Photo ID</div>
+                            {% else %}
+                                <div class="doc-empty" style="border-radius: 50%; width: 120px; height: 120px; margin: 0 auto;">
+                                    <i class="bi bi-person" style="font-size: 32px;"></i>
+                                    <span>No photo uploaded</span>
+                                </div>
+                            {% endif %}
+                            <input type="file" name="avatar" accept="image/*" class="doc-file-input">
+                            <small class="text-muted d-block mt-1">Upload a profile photo. This will also update your Photo ID document.</small>
+                        </div>
+                    </div>
+                    
+                    <div class="col-6 col-md-3">
+                        <div class="doc-upload-box">
+                            <div class="doc-upload-label"><i class="bi bi-card-heading me-1"></i>Visa</div>
+                            {% if request.user.profile.visa_document %}
+                                <img src="{{ request.user.profile.visa_document.url }}" class="doc-preview">
+                                <div class="doc-status"><i class="bi bi-check-circle-fill"></i> Uploaded</div>
+                            {% else %}
+                                <div class="doc-empty"><i class="bi bi-image"></i> No file uploaded</div>
+                            {% endif %}
+                            <input type="file" name="visa_document" accept="image/*" class="doc-file-input">
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="doc-upload-box">
+                            <div class="doc-upload-label"><i class="bi bi-passport me-1"></i>Passport</div>
+                            {% if request.user.profile.passport_document %}
+                                <img src="{{ request.user.profile.passport_document.url }}" class="doc-preview">
+                                <div class="doc-status"><i class="bi bi-check-circle-fill"></i> Uploaded</div>
+                            {% else %}
+                                <div class="doc-empty"><i class="bi bi-image"></i> No file uploaded</div>
+                            {% endif %}
+                            <input type="file" name="passport_document" accept="image/*" class="doc-file-input">
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="doc-upload-box">
+                            <div class="doc-upload-label"><i class="bi bi-person-badge me-1"></i>Photo ID</div>
+                            {% if request.user.profile.photo_document %}
+                                <img src="{{ request.user.profile.photo_document.url }}" class="doc-preview">
+                                <div class="doc-status"><i class="bi bi-check-circle-fill"></i> Uploaded</div>
+                            {% else %}
+                                <div class="doc-empty"><i class="bi bi-image"></i> No file uploaded</div>
+                            {% endif %}
+                            <input type="file" name="photo_document" accept="image/*" class="doc-file-input">
+                            <small class="text-muted d-block mt-1">Will be used as profile photo if no avatar is set.</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="doc-upload-box">
+                            <div class="doc-upload-label"><i class="bi bi-file-earmark-image me-1"></i>Other</div>
+                            {% if request.user.profile.other_document %}
+                                <img src="{{ request.user.profile.other_document.url }}" class="doc-preview">
+                                <div class="doc-status"><i class="bi bi-check-circle-fill"></i> Uploaded</div>
+                            {% else %}
+                                <div class="doc-empty"><i class="bi bi-image"></i> No file uploaded</div>
+                            {% endif %}
+                            <input type="file" name="other_document" accept="image/*" class="doc-file-input">
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary-modal mt-3">
+                    <i class="bi bi-cloud-upload-fill me-2"></i>Save Documents
+                </button>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -1026,6 +1433,154 @@
         <i class="bi bi-box-arrow-right"></i>
         <span>Sign Out</span>
     </a>
+</div>
+
+<!-- ── JOB DETAIL MODAL ── -->
+<div class="modal fade" id="jobDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title fw-bold" id="detailModalTitle">Job Details</h5>
+                    <span class="badge bg-gold-subtle text-gold-dark border border-gold-subtle rounded-pill px-2 mt-1" id="detailJobCode">JOB-001</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-4">
+                    <!-- Left Column: Info -->
+                    <div class="col-md-6">
+                        <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-2 text-gold"></i>Job Information</h6>
+                        <div class="detail-info-grid">
+                            <div class="detail-info-item">
+                                <span class="label">Job Title</span>
+                                <span class="value" id="detailJobTitle">-</span>
+                            </div>
+                            <div class="detail-info-item">
+                                <span class="label">Site Name</span>
+                                <span class="value" id="detailSiteName">-</span>
+                            </div>
+                            <div class="detail-info-item">
+                                <span class="label">Address</span>
+                                <span class="value" id="detailAddress" style="font-size: 0.85rem;">-</span>
+                            </div>
+                            <div class="detail-info-item">
+                                <span class="label">Date</span>
+                                <span class="value" id="detailDate">-</span>
+                            </div>
+                            <div class="detail-info-item">
+                                <span class="label">Time</span>
+                                <span class="value" id="detailTime">-</span>
+                            </div>
+                            <div class="detail-info-item">
+                                <span class="label">Geofence Radius</span>
+                                <span class="value" id="detailRadius">-</span>
+                            </div>
+                            <div class="detail-info-item">
+                                <span class="label">Status</span>
+                                <span class="value" id="detailStatus">-</span>
+                            </div>
+                            <div class="detail-info-item">
+                                <span class="label">Requires Selfie</span>
+                                <span class="value" id="detailSelfie">-</span>
+                            </div>
+                        </div>
+
+                        <!-- Check-in/Check-out Information -->
+                        <h6 class="fw-bold mt-4 mb-3"><i class="bi bi-clock-history me-2 text-gold"></i>Check-in Activity</h6>
+                        <div id="checkinActivityContainer">
+                            <div class="checkin-activity-card" id="checkinActivityEmpty">
+                                <div class="text-muted text-center py-3" style="font-size: 0.85rem;">
+                                    <i class="bi bi-info-circle me-1"></i>No check-in activity yet.
+                                </div>
+                            </div>
+                            <div id="checkinActivityContent" style="display:none;">
+                                <!-- Check-in -->
+                                <div class="checkin-activity-item">
+                                    <div class="checkin-activity-icon checkin-in">
+                                        <i class="bi bi-box-arrow-in-right"></i>
+                                    </div>
+                                    <div class="checkin-activity-details">
+                                        <div class="checkin-activity-label">Check-in</div>
+                                        <div class="checkin-activity-time" id="detailCheckinTime">-</div>
+                                        <div class="checkin-activity-meta">
+                                            <span id="detailCheckinAccuracy">-</span>
+                                            <span class="dot">•</span>
+                                            <span id="detailCheckinGeofence">-</span>
+                                            <span class="dot">•</span>
+                                            <span id="detailCheckinSelfieStatus">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Check-out -->
+                                <div class="checkin-activity-item" id="checkoutActivityItem" style="display:none;">
+                                    <div class="checkin-activity-icon checkin-out">
+                                        <i class="bi bi-box-arrow-right"></i>
+                                    </div>
+                                    <div class="checkin-activity-details">
+                                        <div class="checkin-activity-label">Check-out</div>
+                                        <div class="checkin-activity-time" id="detailCheckoutTime">-</div>
+                                        <div class="checkin-activity-meta">
+                                            <span id="detailCheckoutAccuracy">-</span>
+                                            <span class="dot">•</span>
+                                            <span id="detailCheckoutGeofence">-</span>
+                                            <span class="dot">•</span>
+                                            <span id="detailCheckoutSelfieStatus">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Duration -->
+                                <div class="checkin-activity-item" id="durationActivityItem" style="display:none;">
+                                    <div class="checkin-activity-icon checkin-duration">
+                                        <i class="bi bi-hourglass-split"></i>
+                                    </div>
+                                    <div class="checkin-activity-details">
+                                        <div class="checkin-activity-label">Total Duration</div>
+                                        <div class="checkin-activity-time" id="detailDuration" style="font-size: 1.1rem; font-weight: 700; color: #b8860b;">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Map -->
+                    <div class="col-md-6">
+                        <h6 class="fw-bold mb-3"><i class="bi bi-geo-alt me-2 text-danger"></i>Location Map</h6>
+                        <div id="jobDetailMap"></div>
+                        <div class="mt-2 text-muted small text-center">
+                            <span class="badge" style="background: #b8860b; color: #fff; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.7rem;">● Job Site</span>
+                            <span class="badge" style="background: rgba(212, 175, 55, 0.2); color: #b8860b; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.7rem;">● Geofence</span>
+                            <span style="font-size: 0.7rem; color: #9ca3af;"><i class="bi bi-arrow-left-right me-1"></i>Radius shown</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Instructions Section -->
+                <div class="mt-4">
+                    <h6 class="fw-bold mb-2"><i class="bi bi-list-check me-2 text-gold"></i>Shift Instructions</h6>
+                    <div id="detailInstructions" class="mt-2">
+                        <p class="text-muted small">No instructions provided for this job.</p>
+                    </div>
+                </div>
+
+                <!-- Assigned Staff -->
+                <div class="mt-3">
+                    <h6 class="fw-bold mb-2"><i class="bi bi-people me-2 text-gold"></i>Assigned Staff</h6>
+                    <div id="detailAssignedStaff" class="d-flex flex-wrap gap-2">
+                        <span class="text-muted small">No staff assigned.</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Close
+                </button>
+                <button type="button" class="btn btn-primary-gradient" id="detailCheckinBtn" onclick="closeModalAndCheckin()">
+                    <i class="bi bi-box-arrow-in-right me-1"></i>Check In
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- ── ADD MANUALLY MODAL ── -->
@@ -1151,6 +1706,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     // ── GPS State ──
     var gpsLat=0, gpsLng=0, gpsAcc=999, gpsReady=false;
@@ -1182,7 +1738,6 @@
 
     function updateAllZoneBadges() {
         document.querySelectorAll('[data-lat]').forEach(function(btn){
-            // 🔴 FIXED: Skip jobs that are not for today (upcoming jobs)
             if (btn.dataset.today !== 'true') {
                 var jobpk = btn.dataset.job;
                 var zone = document.getElementById('zone-'+jobpk);
@@ -1238,6 +1793,228 @@
             switchTab(hash);
         }
     });
+
+    // ── Job Detail Modal ──
+    var detailMap = null;
+    var detailMarker = null;
+    var detailGeofenceCircle = null;
+    var detailJobPk = null;
+
+    function viewJobDetail(pk, title, site, addr, start, end, radius, date, status, selfie, instructions, staff, lat, lng, checkinData) {
+        detailJobPk = pk;
+        
+        // Decode the title if it was escaped
+        var decodedTitle = title;
+        try {
+            var txt = document.createElement('textarea');
+            txt.innerHTML = title;
+            decodedTitle = txt.value;
+        } catch(e) {
+            decodedTitle = title;
+        }
+        
+        // Set basic info
+        document.getElementById('detailModalTitle').textContent = decodedTitle || 'Job Details';
+        var codeEl = document.querySelector('#card-' + pk + ' .jbadge-code');
+        document.getElementById('detailJobCode').textContent = codeEl ? codeEl.textContent : 'JOB-' + pk;
+        document.getElementById('detailJobTitle').textContent = decodedTitle || 'Untitled Job';
+        document.getElementById('detailSiteName').textContent = site || 'No site specified';
+        document.getElementById('detailAddress').textContent = addr || 'No address provided';
+        document.getElementById('detailDate').textContent = date || 'Not specified';
+        document.getElementById('detailTime').textContent = start + ' - ' + end;
+        document.getElementById('detailRadius').textContent = radius + 'm';
+        document.getElementById('detailSelfie').textContent = selfie === 'true' || selfie === true ? '✅ Required' : '❌ Not required';
+        
+        // Status badge
+        var statusBadge = document.getElementById('detailStatus');
+        var statusMap = {
+            'UPCOMING': { class: 'bg-secondary', text: 'Upcoming' },
+            'CHECKED_IN': { class: 'bg-gold-soft text-dark', text: 'Checked In' },
+            'COMPLETED': { class: 'bg-gold', text: 'Completed' },
+            'PENDING_APPROVAL': { class: 'bg-warning text-dark', text: 'Pending Approval' },
+            'APPROVED': { class: 'bg-success', text: 'Approved' },
+            'REJECTED': { class: 'bg-danger', text: 'Rejected' }
+        };
+        var s = statusMap[status] || statusMap['UPCOMING'];
+        statusBadge.className = 'badge rounded-pill ' + s.class;
+        statusBadge.textContent = s.text;
+        
+        // ── Check-in Activity ──
+        var hasCheckin = checkinData && checkinData.has_checkin;
+        var emptyContainer = document.getElementById('checkinActivityEmpty');
+        var contentContainer = document.getElementById('checkinActivityContent');
+        
+        if (hasCheckin) {
+            emptyContainer.style.display = 'none';
+            contentContainer.style.display = 'block';
+            
+            // Check-in details
+            document.getElementById('detailCheckinTime').textContent = checkinData.checkin_time || '-';
+            document.getElementById('detailCheckinAccuracy').textContent = checkinData.checkin_accuracy ? '±' + checkinData.checkin_accuracy + 'm' : '-';
+            document.getElementById('detailCheckinGeofence').innerHTML = checkinData.checkin_geofence ? 
+                '<span class="badge bg-success-subtle text-success border border-success-subtle">✅ Inside</span>' :
+                '<span class="badge bg-danger-subtle text-danger border border-danger-subtle">❌ Outside</span>';
+            document.getElementById('detailCheckinSelfieStatus').textContent = checkinData.checkin_selfie ? '📸 Selfie taken' : 'No selfie';
+            
+            // Check-out details
+            var checkoutItem = document.getElementById('checkoutActivityItem');
+            if (checkinData.has_checkout) {
+                checkoutItem.style.display = 'flex';
+                document.getElementById('detailCheckoutTime').textContent = checkinData.checkout_time || '-';
+                document.getElementById('detailCheckoutAccuracy').textContent = checkinData.checkout_accuracy ? '±' + checkinData.checkout_accuracy + 'm' : '-';
+                document.getElementById('detailCheckoutGeofence').innerHTML = checkinData.checkout_geofence ? 
+                    '<span class="badge bg-success-subtle text-success border border-success-subtle">✅ Inside</span>' :
+                    '<span class="badge bg-danger-subtle text-danger border border-danger-subtle">❌ Outside</span>';
+                document.getElementById('detailCheckoutSelfieStatus').textContent = checkinData.checkout_selfie ? '📸 Selfie taken' : 'No selfie';
+            } else {
+                checkoutItem.style.display = 'none';
+            }
+            
+            // Duration
+            var durationItem = document.getElementById('durationActivityItem');
+            if (checkinData.duration) {
+                durationItem.style.display = 'flex';
+                document.getElementById('detailDuration').textContent = checkinData.duration;
+            } else {
+                durationItem.style.display = 'none';
+            }
+        } else {
+            emptyContainer.style.display = 'block';
+            contentContainer.style.display = 'none';
+        }
+        
+        // Instructions
+        var instContainer = document.getElementById('detailInstructions');
+        if (instructions && instructions.length > 0) {
+            instContainer.innerHTML = instructions.map(function(inst) {
+                return '<div class="detail-instruction-item"><i class="bi bi-check-circle-fill"></i> ' + inst + '</div>';
+            }).join('');
+        } else {
+            instContainer.innerHTML = '<p class="text-muted small">No instructions provided for this job.</p>';
+        }
+        
+        // Assigned Staff
+        var staffContainer = document.getElementById('detailAssignedStaff');
+        if (staff && staff.length > 0) {
+            staffContainer.innerHTML = staff.map(function(s) {
+                return '<span class="badge bg-white text-dark border p-2 d-inline-flex align-items-center gap-1" style="border-radius: 8px;">' +
+                    '<i class="bi bi-person-fill text-gold"></i> ' + s +
+                    '</span>';
+            }).join('');
+        } else {
+            staffContainer.innerHTML = '<span class="text-muted small">No staff assigned.</span>';
+        }
+        
+        // ── Initialize Map ──
+        var jobLat = parseFloat(lat) || 27.7172;
+        var jobLng = parseFloat(lng) || 85.3240;
+        var rad = parseFloat(radius) || 75;
+        
+        setTimeout(function() {
+            var mapContainer = document.getElementById('jobDetailMap');
+            if (detailMap === null) {
+                detailMap = L.map(mapContainer).setView([jobLat, jobLng], 15);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(detailMap);
+            } else {
+                detailMap.setView([jobLat, jobLng], 15);
+            }
+            
+            // Clear old markers
+            if (detailMarker) detailMap.removeLayer(detailMarker);
+            if (detailGeofenceCircle) detailMap.removeLayer(detailGeofenceCircle);
+            
+            // Add job site marker
+            detailMarker = L.marker([jobLat, jobLng], {
+                icon: L.divIcon({
+                    className: 'custom-div-icon',
+                    html: '<div style="background-color:#b8860b;width:16px;height:16px;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.3);"></div>',
+                    iconSize: [16, 16],
+                    iconAnchor: [8, 8]
+                })
+            }).addTo(detailMap);
+            detailMarker.bindPopup('<strong>📍 ' + (site || 'Job Site') + '</strong><br>Radius: ' + rad + 'm').openPopup();
+            
+            // Add geofence circle
+            if (jobLat && jobLng && rad) {
+                detailGeofenceCircle = L.circle([jobLat, jobLng], {
+                    color: '#d4af37',
+                    fillColor: '#d4af37',
+                    fillOpacity: 0.12,
+                    weight: 2,
+                    dashArray: '5, 5',
+                    radius: rad
+                }).addTo(detailMap);
+            }
+            
+            detailMap.invalidateSize();
+        }, 300);
+        
+        // Show the modal
+        var modalEl = document.getElementById('jobDetailModal');
+        if (modalEl.parentNode !== document.body) {
+            document.body.appendChild(modalEl);
+        }
+        var modal = new bootstrap.Modal(modalEl);
+        modal.show();
+        
+        // Update check-in button visibility
+        var checkinBtn = document.getElementById('detailCheckinBtn');
+        var today = new Date().toISOString().split('T')[0];
+        var jobDate = date ? new Date(date).toISOString().split('T')[0] : '';
+        var isToday = jobDate === today;
+        var isCompleted = status === 'COMPLETED' || status === 'APPROVED';
+        var isCheckedIn = status === 'CHECKED_IN';
+        
+        // If check-in already exists, hide the check-in button
+        if (hasCheckin) {
+            if (checkinData.has_checkout) {
+                checkinBtn.style.display = 'none';
+            } else {
+                checkinBtn.innerHTML = '<i class="bi bi-box-arrow-right me-1"></i>Check Out';
+                checkinBtn.onclick = function() {
+                    modal.hide();
+                    var btn = document.querySelector('#btn-' + pk);
+                    if (btn && btn.classList.contains('btn-checkout')) {
+                        btn.click();
+                    }
+                };
+                checkinBtn.style.display = '';
+            }
+        } else if (isCompleted) {
+            checkinBtn.style.display = 'none';
+        } else if (isCheckedIn) {
+            checkinBtn.innerHTML = '<i class="bi bi-box-arrow-right me-1"></i>Check Out';
+            checkinBtn.onclick = function() {
+                modal.hide();
+                var btn = document.querySelector('#btn-' + pk);
+                if (btn && btn.classList.contains('btn-checkout')) {
+                    btn.click();
+                }
+            };
+            checkinBtn.style.display = '';
+        } else if (isToday) {
+            checkinBtn.innerHTML = '<i class="bi bi-box-arrow-in-right me-1"></i>Check In';
+            checkinBtn.onclick = function() {
+                modal.hide();
+                var btn = document.querySelector('#btn-' + pk);
+                if (btn && btn.classList.contains('btn-checkin')) {
+                    btn.click();
+                } else {
+                    var checkBtn = document.querySelector('#card-' + pk + ' .btn-checkin');
+                    if (checkBtn) checkBtn.click();
+                }
+            };
+            checkinBtn.style.display = '';
+        } else {
+            checkinBtn.style.display = 'none';
+        }
+    }
+
+    function closeModalAndCheckin() {
+        // This is now handled by the per-job onclick in viewJobDetail
+    }
 
     // ── Modal State ──
     var _mode='in', _jobPk=null, _recordPk=null, _jlat=0, _jlng=0, _jRadius=75;
@@ -1578,10 +2355,6 @@
             var badges=card.querySelectorAll('.jbadge-active, .jbadge-upcoming');
             badges.forEach(function(b){ b.className='jbadge jbadge-pending'; b.textContent='Awaiting Review'; });
         }
-    }
-
-    function viewJobDetail(pk,title,site,addr,start,end,radius) {
-        alert(title+'\n'+site+'\n'+addr+'\nTime: '+start+' - '+end+'\nRadius: '+radius+'m');
     }
 
     startGPS();
