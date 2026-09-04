@@ -26,6 +26,11 @@ urlpatterns = [
     path("checkin/<int:job_pk>/", views.checkin_view, name="checkin"),
     path("checkout/<int:record_pk>/", views.checkout_view, name="checkout"),
 
+    # Settings & Backup
+    path("settings/backup/", views.backup_settings_view, name="backup_settings"),
+    path("settings/backup/export/", views.export_backup_view, name="export_backup"),
+    path("settings/backup/import/", views.import_backup_view, name="import_backup"),
+
     # API endpoints
     path("api/staff-locations/", views.staff_locations_api, name="staff_locations_api"),
     path("api/log-location/", views.log_location_api, name="log_location_api"),

@@ -885,6 +885,41 @@
     <span class="badge-role">STAFF</span>
 </div>
 
+{% if messages %}
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 2000;">
+    {% for message in messages %}
+        <div class="toast align-items-center text-white border-0 show shadow-lg rounded-4 mb-2 animate-fade-in
+            {% if message.tags == 'success' %}bg-success{% elif message.tags == 'error' or message.tags == 'danger' %}bg-danger{% elif message.tags == 'warning' %}bg-warning text-dark{% else %}bg-dark{% endif %}"
+            role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex align-items-center">
+                <div class="toast-body d-flex align-items-center gap-2 py-3 px-3 fs-6">
+                    {% if message.tags == 'success' %}
+                        <i class="bi bi-check-circle-fill fs-5 text-white"></i>
+                    {% elif message.tags == 'error' or message.tags == 'danger' %}
+                        <i class="bi bi-exclamation-triangle-fill fs-5 text-white"></i>
+                    {% else %}
+                        <i class="bi bi-info-circle-fill fs-5 text-white"></i>
+                    {% endif %}
+                    <span class="fw-medium">{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-3 ms-auto" onclick="this.closest('.toast').remove()" aria-label="Close"></button>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var toastEls = document.querySelectorAll('.toast');
+        toastEls.forEach(function(toastEl) {
+            setTimeout(function() {
+                toastEl.classList.remove('show');
+                setTimeout(function() { toastEl.remove(); }, 300);
+            }, 4000);
+        });
+    });
+</script>
+{% endif %}
+
 <!-- ── Top Nav ── -->
 <nav class="staff-nav">
     <div class="nav-left">

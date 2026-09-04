@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Backup & System Settings — StaffTracker{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Page Header -->
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h3 class="fw-bold mb-1" style="background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                    <i class="bi bi-database-fill-gear me-2"></i>Backup & System Settings
+                </h3>
+                <p class="text-muted small mb-0">Manage database backups, system restore, and global operational settings</p>
+            </div>
+            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary rounded-4 px-3">
+                <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- ── 1. DATABASE BACKUP & RESTORE ── -->
+    <div class="col-12 col-lg-6">
+        <div class="card border-0 shadow-sm h-100" style="border-radius: 24px; background: var(--lg-bg-strong); backdrop-filter: var(--lg-blur); -webkit-backdrop-filter: var(--lg-blur); border: 1px solid rgba(255,255,255,0.6);">
+            <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-inline-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background: rgba(212, 175, 55, 0.15); border-radius: 16px; color: #b8860b;">
+                        <i class="bi bi-cloud-arrow-down-fill fs-4"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-0 text-dark">Database Backup</h5>
+                        <small class="text-muted">Export complete system data to JSON format</small>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <div class="p-3 mb-4 rounded-4" style="background: rgba(255,255,255,0.5); border: 1px dashed rgba(184,134,11,0.3);">
+                    <div class="d-flex align-items-start gap-3">
+                        <i class="bi bi-info-circle-fill text-gold fs-4 flex-shrink-0 mt-1"></i>
+                        <div>
+                            <div class="fw-bold text-dark mb-1">Full System Export</div>
+                            <p class="small text-muted mb-0">
+                                Download a complete snapshot of all staff profiles, job definitions, assignments, check-in history, location logs, and settings.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <a href="{% url 'export_backup' %}" class="btn btn-primary-gradient w-100 py-3 rounded-4 fw-semibold text-center d-flex align-items-center justify-content-center gap-2 shadow-sm">
+                    <i class="bi bi-download fs-5"></i> Download Complete Backup (.json)
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── RESTORE BACKUP ── -->
+    <div class="col-12 col-lg-6">
+        <div class="card border-0 shadow-sm h-100" style="border-radius: 24px; background: var(--lg-bg-strong); backdrop-filter: var(--lg-blur); -webkit-backdrop-filter: var(--lg-blur); border: 1px solid rgba(255,255,255,0.6);">
+            <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-inline-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background: rgba(16, 185, 129, 0.15); border-radius: 16px; color: #10b981;">
+                        <i class="bi bi-cloud-arrow-up-fill fs-4"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-0 text-dark">Restore Database</h5>
+                        <small class="text-muted">Import data from a previously downloaded JSON backup</small>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <div class="p-3 mb-4 rounded-4" style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2);">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="bi bi-exclamation-triangle-fill text-danger fs-5 flex-shrink-0 mt-1"></i>
+                        <div class="small text-danger">
+                            <strong>Caution:</strong> Uploading a backup file will import all records into your database. Make sure to upload a valid StaffTracker JSON backup.
+                        </div>
+                    </div>
+                </div>
+
+                <form action="{% url 'import_backup' %}" method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="backupFileInput" class="form-label fw-bold text-dark small">Select Backup JSON File</label>
+                        <input type="file" name="backup_file" id="backupFileInput" accept=".json" class="form-control rounded-4 border-light-subtle py-2" required>
+                    </div>
+                    <button type="submit" class="btn btn-outline-success w-100 py-3 rounded-4 fw-semibold d-flex align-items-center justify-content-center gap-2" onclick="return confirm('Are you sure you want to restore the database from this backup file?');">
+                        <i class="bi bi-upload fs-5"></i> Upload & Restore Backup
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 2. GLOBAL SYSTEM SETTINGS ── -->
+    <div class="col-12">
+        <div class="card border-0 shadow-sm" style="border-radius: 24px; background: var(--lg-bg-strong); backdrop-filter: var(--lg-blur); -webkit-backdrop-filter: var(--lg-blur); border: 1px solid rgba(255,255,255,0.6);">
+            <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-inline-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background: rgba(59, 130, 246, 0.15); border-radius: 16px; color: #3b82f6;">
+                        <i class="bi bi-sliders fs-4"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-0 text-dark">System Configuration</h5>
+                        <small class="text-muted">Global operational thresholds & company branding</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-body p-4">
+                <form method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary small mb-1">Company Name</label>
+                            <input type="text" name="company_name" value="{{ settings.company_name }}" class="form-control rounded-4 py-2" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary small mb-1">Default Geofence Radius (meters)</label>
+                            <input type="number" name="default_geofence_radius" value="{{ settings.default_geofence_radius }}" class="form-control rounded-4 py-2" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary small mb-1">Max Allowed GPS Accuracy (meters)</label>
+                            <input type="number" name="max_allowed_gps_accuracy" value="{{ settings.max_allowed_gps_accuracy }}" class="form-control rounded-4 py-2" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary small mb-1">Late Check-in Tolerance (minutes)</label>
+                            <input type="number" name="late_tolerance_minutes" value="{{ settings.late_tolerance_minutes }}" class="form-control rounded-4 py-2" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary small mb-1">Working Hours Start</label>
+                            <input type="text" name="working_hours_start" value="{{ settings.working_hours_start }}" class="form-control rounded-4 py-2">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary small mb-1">Working Hours End</label>
+                            <input type="text" name="working_hours_end" value="{{ settings.working_hours_end }}" class="form-control rounded-4 py-2">
+                        </div>
+
+                        <div class="col-md-12">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input fs-5" type="checkbox" name="strict_geofence_camera_lock" id="strictLock" {% if settings.strict_geofence_camera_lock %}checked{% endif %}>
+                                <label class="form-check-label fw-semibold text-dark pt-1 ms-2" for="strictLock">
+                                    Strict Geofence Camera Lock (Require GPS verification before unlocking camera)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-12 mt-4 text-end">
+                            <button type="submit" class="btn btn-primary-gradient px-5 py-2.5 rounded-4 fw-semibold shadow-sm">
+                                <i class="bi bi-check-circle-fill me-2"></i> Save Settings
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

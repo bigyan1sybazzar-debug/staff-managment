@@ -5,12 +5,16 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q, Sum
+from django.core.management import call_command
 import json
 import math
 import datetime
+import io
+import tempfile
+import os
 from .models import Profile, Job, CheckInRecord, SystemSettings, WorkLocation, JobAssignment
 
 
@@ -59,6 +63,11 @@ def login_view(request):
         user = authenticate(request, username=username, password=password)
         if user is not None:
             if user.is_active:
+                # Clear any lingering unconsumed auth messages (e.g. "You have been logged out.")
+                storage = messages.get_messages(request)
+                for _ in storage:
+                    pass
+
                 login(request, user)
                 messages.success(request, f"Welcome back, {user.username}!")
                 # Route by role
@@ -123,13 +132,12 @@ def staff_dashboard_view(request):
     today = timezone.now().date()
     user = request.user
 
+    # Jobs assigned to this staff member with active access grant today
     active_job_ids = JobAssignment.objects.filter(
         staff=user, granted_start__lte=today, granted_end__gte=today
     ).values_list('job_id', flat=True)
 
-    all_assigned = Job.objects.filter(id__in=active_job_ids)
-    
-    today_jobs_raw = all_assigned.filter(date=today).order_by('start_time')
+    all_assigned = Job.objects.filter(id__in=active_job_ids).order_by('start_time')
     
     user_checkins = CheckInRecord.objects.filter(user=user)
     active_checkins = {}
@@ -138,7 +146,8 @@ def staff_dashboard_view(request):
     for ci in user_checkins:
         if ci.check_out_timestamp is None:
             active_checkins[ci.job_id] = ci
-        else:
+        elif ci.timestamp.date() == today:
+            # Only mark as completed today if the check-in occurred today
             completed_checkins[ci.job_id] = ci
 
     def annotate(queryset):
@@ -148,9 +157,9 @@ def staff_dashboard_view(request):
             job.completed_checkin = completed_checkins.get(job.pk)
         return jobs
 
-    annotated_jobs = annotate(today_jobs_raw)
+    annotated_jobs = annotate(all_assigned)
     
-    # ── Separate into active and completed ──
+    # ── Separate into active and completed today ──
     active_today_jobs = []
     completed_today_jobs = []
     
@@ -162,8 +171,11 @@ def staff_dashboard_view(request):
     
     completed_today_jobs.sort(key=lambda j: j.completed_checkin.check_out_timestamp if j.completed_checkin else j.date)
     
-    # ── Upcoming jobs ──
-    upcoming_jobs = all_assigned.filter(date__gt=today).order_by('date', 'start_time')
+    # ── Upcoming jobs (grant window starts in future) ──
+    upcoming_job_ids = JobAssignment.objects.filter(
+        staff=user, granted_start__gt=today
+    ).values_list('job_id', flat=True)
+    upcoming_jobs = Job.objects.filter(id__in=upcoming_job_ids).order_by('date', 'start_time')
     upcoming_jobs = annotate(upcoming_jobs)
 
     # ── History ──
@@ -185,10 +197,10 @@ def staff_dashboard_view(request):
 
     context = {
         'today': today,
-        'active_today_jobs': active_today_jobs,      # ← NEW: Active jobs
-        'completed_today_jobs': completed_today_jobs, # ← NEW: Completed jobs
+        'active_today_jobs': active_today_jobs,
+        'completed_today_jobs': completed_today_jobs,
         'upcoming_jobs': upcoming_jobs,
-        'total_assigned': all_assigned.count(),
+        'total_assigned': len(annotated_jobs),
         'my_checkins': history_checkins,
         'total_completed_minutes': total_completed_minutes,
         'total_completed_display': total_completed_display,
@@ -341,10 +353,26 @@ def checkin_view(request, job_pk):
     except Job.DoesNotExist:
         return JsonResponse({'ok': False, 'error': f'Job #{job_pk} not found'}, status=404)
     
-    # 🔴 FIXED: Server-side validation - Prevent check-in for upcoming jobs
+    # Validate staff access duration grant
     today = timezone.now().date()
-    if job.date > today:
-        return JsonResponse({'ok': False, 'error': 'This job is scheduled for a future date. You cannot check in yet.'}, status=400)
+    assignment = JobAssignment.objects.filter(job=job, staff=request.user).first()
+    if not assignment:
+        return JsonResponse({'ok': False, 'error': 'You are not assigned to this job.'}, status=403)
+        
+    if assignment.granted_start > today:
+        return JsonResponse({'ok': False, 'error': 'This job access starts on a future date. You cannot check in yet.'}, status=400)
+
+    if assignment.granted_end < today:
+        return JsonResponse({'ok': False, 'error': 'Access for this job has expired.'}, status=400)
+
+    # Prevent duplicate active check-ins or multiple check-ins on the same day
+    existing_active = CheckInRecord.objects.filter(job=job, user=request.user, check_out_timestamp__isnull=True).first()
+    if existing_active:
+        return JsonResponse({'ok': False, 'error': 'You are already checked in to this job. Please check out first.'}, status=400)
+
+    existing_completed_today = CheckInRecord.objects.filter(job=job, user=request.user, timestamp__date=today, check_out_timestamp__isnull=False).first()
+    if existing_completed_today:
+        return JsonResponse({'ok': False, 'error': 'You have already completed your shift for today.'}, status=400)
     
     try:
         lat      = float(request.POST.get('lat', 0))
@@ -1057,3 +1085,91 @@ def job_delete_view(request, pk):
     job.delete()
     messages.success(request, f"Job '{code}' deleted successfully.")
     return redirect('job_list')
+
+
+# ==========================
+# System Settings & Database Backup/Restore
+# ==========================
+@login_required
+def backup_settings_view(request):
+    if not (request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile.role in ['ADMIN', 'SUPER_ADMIN'])):
+        messages.error(request, "Permission denied.")
+        return redirect('dashboard')
+
+    settings_obj = SystemSettings.get_settings()
+
+    if request.method == 'POST':
+        settings_obj.company_name = request.POST.get('company_name', settings_obj.company_name)
+        settings_obj.default_geofence_radius = int(request.POST.get('default_geofence_radius', settings_obj.default_geofence_radius))
+        settings_obj.max_allowed_gps_accuracy = int(request.POST.get('max_allowed_gps_accuracy', settings_obj.max_allowed_gps_accuracy))
+        settings_obj.strict_geofence_camera_lock = True if request.POST.get('strict_geofence_camera_lock') == 'on' else False
+        settings_obj.late_tolerance_minutes = int(request.POST.get('late_tolerance_minutes', settings_obj.late_tolerance_minutes))
+        settings_obj.working_hours_start = request.POST.get('working_hours_start', settings_obj.working_hours_start)
+        settings_obj.working_hours_end = request.POST.get('working_hours_end', settings_obj.working_hours_end)
+
+        if request.FILES.get('company_logo'):
+            settings_obj.company_logo = request.FILES.get('company_logo')
+
+        settings_obj.save()
+        messages.success(request, "System settings updated successfully.")
+        return redirect('backup_settings')
+
+    context = {
+        'settings': settings_obj,
+    }
+    return render(request, 'backup_settings.html', context)
+
+
+@login_required
+def export_backup_view(request):
+    if not (request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile.role in ['ADMIN', 'SUPER_ADMIN'])):
+        messages.error(request, "Permission denied. Only Administrators can download backups.")
+        return redirect('dashboard')
+
+    try:
+        buf = io.StringIO()
+        call_command('dumpdata', exclude=['contenttypes', 'auth.permission', 'sessions'], stdout=buf, indent=2)
+        json_data = buf.getvalue()
+
+        timestamp = timezone.now().strftime('%Y-%m-%d_%H%M%S')
+        filename = f"stafftracker_backup_{timestamp}.json"
+
+        response = HttpResponse(json_data, content_type='application/json')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    except Exception as e:
+        messages.error(request, f"Failed to generate backup: {str(e)}")
+        return redirect('backup_settings')
+
+
+@login_required
+def import_backup_view(request):
+    if not (request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile.role in ['ADMIN', 'SUPER_ADMIN'])):
+        messages.error(request, "Permission denied. Only Administrators can restore backups.")
+        return redirect('dashboard')
+
+    if request.method == 'POST':
+        backup_file = request.FILES.get('backup_file')
+        if not backup_file:
+            messages.error(request, "Please select a backup JSON file to upload.")
+            return redirect('backup_settings')
+
+        if not backup_file.name.endswith('.json'):
+            messages.error(request, "Invalid file format. Please upload a valid JSON backup file.")
+            return redirect('backup_settings')
+
+        try:
+            with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as tmp:
+                for chunk in backup_file.chunks():
+                    tmp.write(chunk)
+                tmp_path = tmp.name
+
+            call_command('loaddata', tmp_path)
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+
+            messages.success(request, f"Database & settings successfully restored from '{backup_file.name}'!")
+        except Exception as e:
+            messages.error(request, f"Failed to restore backup: {str(e)}")
+
+    return redirect('backup_settings')
